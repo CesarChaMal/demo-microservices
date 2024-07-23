@@ -7,6 +7,8 @@ docker-compose up --build
 
 docker-compose down
 
+
 -- Scale Services: 
 
-docker-compose up --scale node-service=3
+docker-compose up --scale node-service=3 --scale java-service=2 --scale python-service=4
+
