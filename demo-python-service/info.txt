@@ -1,0 +1,15 @@
+-- create virtual environment
+python -m venv venv
+
+-- ubuntu
+source venv/bin/activate
+
+-- gitbash
+source venv/Scripts/activate
+
+-- install eureka client lib
+pip install flask py-eureka-client
+
+-- run the microservice
+python python_service.py
+

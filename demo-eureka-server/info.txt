@@ -1,0 +1,6 @@
+-- To start the app
+./mvnw spring-boot:run
+
+-- To acces Eureka config page
+http://localhost:8761/
+

@@ -1,0 +1,12 @@
+-- Build and Run All Services: 
+
+docker-compose up --build
+
+
+-- Stop Services: 
+
+docker-compose down
+
+-- Scale Services: 
+
+docker-compose up --scale node-service=3
