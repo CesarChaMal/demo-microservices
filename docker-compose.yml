@@ -1,28 +1,44 @@
 version: '3.8'
 services:
-  node-service:
-    build: ./demo-node-service
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./demo-node-service:/app
-      - /app/node_modules
-
-  java-service:
-    build: ./demo-java-service
-    ports:
-      - "8080:8080"
-
-  python-service:
-    build: ./demo-python-service
-    ports:
-      - "5000:5000"
-
   eureka-server:
     build: ./demo-eureka-server
     ports:
       - "8761:8761"
     environment:
       - EUREKA_CLIENT_REGISTERWITHEUREKA=false
-      - EUREKA_CLIENT_FETCHREGISTRY=false      
+      - EUREKA_CLIENT_FETCHREGISTRY=false
+    networks:
+      - mynet
 
+  node-service:
+    build: ./demo-node-service
+    ports:
+      - "3000:3000"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - mynet
+
+  java-service:
+    build: ./demo-java-service
+    ports:
+      - "8080:8080"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - mynet
+
+  python-service:
+    build: ./demo-python-service
+    ports:
+      - "5000:5000"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - mynet
+
+networks:
+  mynet:
