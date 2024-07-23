@@ -8,9 +8,9 @@ app.use(bodyParser.json());  // Middleware to parse JSON requests
 const eurekaClient = new Eureka({
   instance: {
     app: 'node-service',
-    hostName: 'localhost',
-    ipAddr: '127.0.0.1',
-    statusPageUrl: 'http://localhost:3000',
+    hostName: 'node-service',
+    ipAddr: 'node-service',
+    statusPageUrl: 'http://node-service:3000',
     port: {
       '$': 3000,
       '@enabled': 'true',
@@ -22,7 +22,7 @@ const eurekaClient = new Eureka({
     },
   },
   eureka: {
-    host: 'localhost',
+    host: 'eureka-server',
     port: 8761,
     servicePath: '/eureka/apps/',
   },

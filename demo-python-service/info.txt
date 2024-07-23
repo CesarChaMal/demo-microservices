@@ -8,8 +8,10 @@ source venv/bin/activate
 source venv/Scripts/activate
 
 -- install eureka client lib
-pip install flask py-eureka-client
+-- pip install flask py-eureka-client
+
+-- install dependencies
+pip install -r requirements.txt
 
 -- run the microservice
-python python_service.py
-
+python app.py

@@ -1,6 +1,6 @@
 npm init -y
 npm install express eureka-js-client axios
-node node_service.js
+node app.js
 curl -v -X POST http://localhost:3000/process -H "Content-Type: application/json" -d "{\"value\": 10}"
 
 
