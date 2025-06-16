@@ -15,3 +15,5 @@ pip install -r requirements.txt
 
 -- run the microservice
 python app.py
+
+curl -v -X POST http://localhost:5001/process -H "Content-Type: application/json" -d "{\"value\": 10}"

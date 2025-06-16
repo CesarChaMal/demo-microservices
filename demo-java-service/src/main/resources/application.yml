@@ -5,3 +5,15 @@ eureka:
   client:
     service-url:
       defaultZone: http://eureka-server:8761/eureka/
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+info:
+  app:
+    name: java-service
+    description: Java demo microservice
+    version: 1.0.0
