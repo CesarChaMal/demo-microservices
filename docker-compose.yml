@@ -1,36 +1,99 @@
-version: '3.8'
+version: "3.8"
+
+name: demo-microservices
+
+networks:
+  micro_net:
+    driver: bridge
+
+volumes:
+  mysql_data:
+
 services:
   eureka-server:
     build: ./demo-eureka-server
+    container_name: eureka-server
     ports:
       - "8761:8761"
     environment:
       - EUREKA_CLIENT_REGISTERWITHEUREKA=false
       - EUREKA_CLIENT_FETCHREGISTRY=false
-
-  node-service:
-    build: ./demo-node-service
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./demo-node-service:/app
-      - /app/node_modules
-    depends_on:
-      eureka-server:
-        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8761/actuator/health | grep '\"status\":\"UP\"' >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - micro_net
 
   java-service:
     build: ./demo-java-service
+    container_name: java-service
     ports:
       - "8080:8080"
     depends_on:
       eureka-server:
         condition: service_healthy
+      mysql:
+        condition: service_healthy
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${EUREKA_SERVER_URL}
+    restart: unless-stopped
+    networks:
+      - micro_net
 
-  python-service:
-    build: ./demo-python-service
+  node-service:
+    build: ./demo-node-service
+    container_name: node-service
     ports:
-      - "5000:5000"
+      - "3000:3000"
     depends_on:
       eureka-server:
         condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - micro_net
+
+  python-service:
+    build: ./demo-python-service
+    container_name: python-service
+    ports:
+      - "5001:5001"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - micro_net
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    command: [
+      "--default-authentication-plugin=mysql_native_password",
+      "--max_connections=200",
+      "--character-set-server=utf8mb4",
+      "--collation-server=utf8mb4_unicode_ci"
+    ]
+    env_file:
+      - .env
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - micro_net

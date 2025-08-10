@@ -151,3 +151,10 @@ Thumbs.db
 # Heroku
 .env
 .env.backup
+
+# Terraform
+**/terraform.tfvars
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/.terraform
+**/mykey*

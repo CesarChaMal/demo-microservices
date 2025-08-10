@@ -1,0 +1,17 @@
+data "template_file" "my_stack_template" {
+  template = file("${path.module}/json_files/cloud_formation.json")
+
+  vars = {
+    APP = var.APP
+    ENV = var.ENV
+    REGION = var.AWS_REGION
+    ACCOUNT_ID = var.AWS_ACCOUNT_ID
+  }
+}
+
+resource "aws_cloudformation_stack" "my_stack" {
+  name           = "stack-${var.APP}-${var.ENV}"
+  template_body  = data.template_file.my_stack_template.rendered
+
+  capabilities   = ["CAPABILITY_IAM"]
+}
