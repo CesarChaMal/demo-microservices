@@ -12,3 +12,24 @@ docker-compose down
 
 docker-compose up --scale node-service=3 --scale java-service=2 --scale python-service=4
 
+
+export AWS_REGION=eu-west-1
+export AWS_ACCOUNT_ID=123456789012
+export APP=demo
+export ENV=dev
+export VER=1.0.0
+export MODE=serverless
+
+./create_stack.sh
+# ./destroy_stack.sh
+
+
+export AWS_REGION=eu-west-1
+export AWS_ACCOUNT_ID=123456789012
+export APP=demo
+export ENV=dev
+export VER=1.0.0
+export MODE=docker
+
+./create_stack.sh
+# ./destroy_stack.sh
