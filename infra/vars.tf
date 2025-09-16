@@ -1,9 +1,13 @@
 variable "AWS_ACCESS_KEY" {
-  type = string
+  description = "AWS Access Key ID for authentication"
+  type        = string
+  sensitive   = true
 }
 
 variable "AWS_SECRET_KEY" {
-  type = string
+  description = "AWS Secret Access Key for authentication"
+  type        = string
+  sensitive   = true
 }
 
 variable "AWS_REGION" {

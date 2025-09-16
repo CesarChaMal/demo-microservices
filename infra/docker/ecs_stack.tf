@@ -30,10 +30,12 @@ resource "aws_iam_role_policy_attachment" "ecs_exec_attach" {
 resource "aws_security_group" "svc" {
   count       = var.DEPLOY_CONTAINERS ? 1 : 0
   name        = "${local.name_prefix}-svc"
-  description = "Allow HTTP"
+  description = "Allow HTTP from VPC"
   vpc_id      = var.VPC_ID
 
-  ingress { from_port = 0 to_port = 65535 protocol = "tcp" cidr_blocks = ["0.0.0.0/0"] }
+  ingress { from_port = 8080 to_port = 8080 protocol = "tcp" cidr_blocks = ["10.0.0.0/16"] }
+  ingress { from_port = 3000 to_port = 3000 protocol = "tcp" cidr_blocks = ["10.0.0.0/16"] }
+  ingress { from_port = 5001 to_port = 5001 protocol = "tcp" cidr_blocks = ["10.0.0.0/16"] }
   egress  { from_port = 0 to_port = 0     protocol = "-1"  cidr_blocks = ["0.0.0.0/0"] }
 }
 

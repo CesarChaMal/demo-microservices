@@ -1,11 +1,13 @@
 const express = require('express');
-const bodyParser = require('body-parser');
 const { Eureka } = require('eureka-js-client');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
 
+const PORT = process.env.PORT || 3000;
+const EUREKA_HOST = process.env.EUREKA_HOST || 'eureka-server';
+
 const app = express();
-app.use(bodyParser.json());  // Middleware to parse JSON requests
+app.use(express.json());  // Built-in JSON parser
 
 // Swagger setup
 const swaggerOptions = {
@@ -29,9 +31,9 @@ const eurekaClient = new Eureka({
     app: 'node-service',
     hostName: 'node-service',
     ipAddr: 'node-service',
-    statusPageUrl: 'http://node-service:3000/info',
+    statusPageUrl: `http://node-service:${PORT}/info`,
     port: {
-      '$': 3000,
+      '$': PORT,
       '@enabled': 'true',
     },
     vipAddress: 'node-service',
@@ -41,7 +43,7 @@ const eurekaClient = new Eureka({
     },
   },
   eureka: {
-    host: 'eureka-server',
+    host: EUREKA_HOST,
     port: 8761,
     servicePath: '/eureka/apps/',
   },
@@ -83,6 +85,9 @@ eurekaClient.start((error) => {
  */
 app.post('/process', (req, res) => {
   try {
+    if (!req.body) {
+      return res.status(400).json({ error: 'Request body is required' });
+    }
     const { value } = req.body;
     if (typeof value !== 'number') {
       return res.status(400).json({ error: 'Value must be a number' });
@@ -119,7 +124,6 @@ app.get('/info', (req, res) => {
   });
 });
 
-const port = 3000;
-app.listen(port, () => {
-  console.log(`Node service running on http://node-service:${port}`);
+app.listen(PORT, () => {
+  console.log(`Node service running on http://node-service:${PORT}`);
 });

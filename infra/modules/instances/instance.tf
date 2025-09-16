@@ -13,9 +13,13 @@ resource "aws_instance" "instance" {
   # the public SSH key
   key_name = aws_key_pair.mykeypair.key_name
 
+  root_block_device {
+    encrypted = true
+  }
+
   tags = {
-    Name         = "${var.APP}-${var.ENV}-instance"
-    Environmnent = var.ENV
+    Name        = "${var.APP}-${var.ENV}-instance"
+    Environment = var.ENV
     Application = var.APP
   }
 }

@@ -7,17 +7,16 @@ app = Flask(__name__)
 swagger = Swagger(app)  # Enable Swagger UI
 
 def start_eureka_sync():
-    eureka_client = EurekaClient(
-        eureka_server="http://eureka-server:8761/eureka/",
-        app_name="python-service",
-        instance_port=5001,
-        instance_ip="python-service",
-    )
-    eureka_client.start()
-
-async def start_eureka():
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, start_eureka_sync)
+    try:
+        eureka_client = EurekaClient(
+            eureka_server="http://eureka-server:8761/eureka/",
+            app_name="python-service",
+            instance_port=5001,
+            instance_ip="python-service",
+        )
+        eureka_client.start()
+    except Exception as e:
+        print(f"Failed to register with Eureka: {e}")
 
 @app.route('/process', methods=['POST'])
 def process_data():
@@ -47,9 +46,18 @@ def process_data():
               type: number
               example: 20
     """
+    if not request.json:
+        return jsonify({'error': 'Request body is required'}), 400
+    
     data = request.json
-    processed_data = {'result': data['value'] * 2}
-    return jsonify(processed_data)
+    if 'value' not in data:
+        return jsonify({'error': 'Value field is required'}), 400
+    
+    try:
+        processed_data = {'result': data['value'] * 2}
+        return jsonify(processed_data)
+    except (TypeError, ValueError) as e:
+        return jsonify({'error': 'Invalid value type'}), 400
 
 @app.route('/info', methods=['GET'])
 def info():
@@ -74,5 +82,10 @@ def info():
     return jsonify({"app": "python-service", "status": "running"})
 
 if __name__ == '__main__':
-    asyncio.run(start_eureka())
-    app.run(port=5001)
+    import threading
+    # Start Eureka registration in background thread
+    eureka_thread = threading.Thread(target=start_eureka_sync)
+    eureka_thread.daemon = True
+    eureka_thread.start()
+    
+    app.run(host='0.0.0.0', port=5001)
