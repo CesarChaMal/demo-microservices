@@ -186,27 +186,42 @@ services:
 ### Health Endpoints
 - Eureka: http://localhost:8761/actuator/health
 - Java Service: http://localhost:8080/actuator/health
-- All Services: `/info` endpoint
+- Node Service: http://localhost:3000/info
+- Python Service: http://localhost:5001/info
 
 ### Docker Health Checks
-- MySQL: `mysqladmin ping`
-- Eureka: HTTP health check with retries
-- Services: Dependency-based startup ordering
+- **MySQL**: `mysqladmin ping` with retry logic
+- **Eureka Server**: HTTP health check with 12 retries
+- **Java Service**: Actuator health endpoint monitoring
+- **All Services**: Dependency-based startup ordering
+- **Automatic Restart**: `unless-stopped` policy for resilience
 
-## 🔒 Security Considerations
+### Service Dependencies
+```yaml
+# Startup order ensures proper service registration
+Eureka Server → Database → Application Services
+```
 
-### Current Implementation
-- Environment-based configuration
-- Docker network isolation
-- AWS IAM role-based access
-- Security groups for network access
+## 🔒 Security Features
 
-### Recommendations
-- Enable HTTPS/TLS in production
+### Implemented Security Measures
+- **Encrypted Storage**: RDS and EBS encryption enabled
+- **Secure Credentials**: AWS credentials marked as sensitive in Terraform
+- **Network Security**: Restricted security groups (VPC-only access)
+- **Input Validation**: Request validation and error handling
+- **Limited Endpoints**: Management endpoints restricted to health/info only
+- **Updated Dependencies**: Latest secure versions of Flask, Express, Axios
+- **Environment-based Configuration**: No hardcoded secrets
+- **Docker Network Isolation**: Services isolated in private network
+
+### Production Recommendations
+- Enable HTTPS/TLS with SSL certificates
 - Implement API authentication (JWT/OAuth2)
-- Use AWS Secrets Manager for credentials
-- Enable database encryption at rest
-- Implement CSRF protection for web endpoints
+- Use AWS Secrets Manager for credential rotation
+- Enable AWS CloudTrail for audit logging
+- Implement rate limiting and DDoS protection
+- Add Web Application Firewall (WAF)
+- Enable VPC Flow Logs for network monitoring
 
 ## 🚀 Deployment Strategies
 
@@ -277,20 +292,22 @@ curl http://localhost:8761/eureka/apps
 ## 📚 Technology Stack
 
 ### Backend Services
-- **Java**: Spring Boot 3, Spring Cloud, Maven
-- **Node.js**: Express.js, Eureka JS Client, Swagger
-- **Python**: Flask, py-eureka-client, Flasgger
+- **Java**: Spring Boot 3.3.1, Spring Cloud 2023.0.2, Java 22
+- **Node.js**: Express 4.21.1, Eureka JS Client, Node 20
+- **Python**: Flask 3.0.0, py-eureka-client, Python 3.11
 
-### Infrastructure
-- **Containerization**: Docker, Docker Compose
-- **Cloud**: AWS (ECS, Lambda, RDS, API Gateway)
-- **IaC**: Terraform with modular design
-- **Database**: MySQL 8.0 with connection pooling
+### Infrastructure & Security
+- **Containerization**: Docker, Docker Compose with health checks
+- **Cloud**: AWS (ECS, Lambda, RDS with encryption, API Gateway)
+- **IaC**: Terraform with modular design and sensitive variables
+- **Database**: MySQL 8.0 with encryption and backup retention
+- **Security**: Encrypted storage, restricted security groups, input validation
 
 ### Development Tools
 - **API Documentation**: Swagger/OpenAPI 3.0
 - **Version Management**: SDKMAN, NVM, pyenv
 - **Build Tools**: Maven, npm, pip
+- **Deployment**: Multi-environment scripts (run.sh/run.bat)
 
 ## 🤝 Contributing
 
@@ -312,20 +329,30 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Check network connectivity between containers
 - Verify Eureka server is healthy before starting services
 - Review service configuration for correct Eureka URL
+- Check Docker health checks are passing
 
 **Database connection failures:**
 - Ensure MySQL container is running and healthy
 - Verify database credentials in `.env` file
 - Check network connectivity between services and database
+- Confirm RDS encryption is properly configured
 
 **Port conflicts:**
 - Ensure ports 3000, 5001, 8080, 8761, 3306 are available
 - Modify port mappings in `docker-compose.yml` if needed
+- Check security group rules for AWS deployments
 
 **AWS deployment issues:**
-- Verify AWS credentials and permissions
+- Verify AWS credentials and permissions (marked as sensitive)
 - Check Terraform state and plan output
 - Review CloudWatch logs for service errors
+- Ensure EBS and RDS encryption is enabled
+- Validate security group configurations
+
+**Dependency vulnerabilities:**
+- Run `npm audit fix` for Node.js services
+- Update Python packages: `pip install --upgrade -r requirements.txt`
+- Check for Spring Boot security updates
 
 ### Logs and Debugging
 
