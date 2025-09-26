@@ -1,0 +1,4 @@
+-- To start the app
+./mvnw spring-boot:run
+
+curl -X POST http://localhost:8080/calculate -H "Content-Type: application/json" -d '{"value": 10}'

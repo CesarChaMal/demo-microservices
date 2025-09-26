@@ -1,0 +1,19 @@
+-- create virtual environment
+python -m venv venv
+
+-- ubuntu
+source venv/bin/activate
+
+-- gitbash
+source venv/Scripts/activate
+
+-- install eureka client lib
+-- pip install flask py-eureka-client
+
+-- install dependencies
+pip install -r requirements.txt
+
+-- run the microservice
+python app.py
+
+curl -v -X POST http://localhost:5001/process -H "Content-Type: application/json" -d "{\"value\": 10}"

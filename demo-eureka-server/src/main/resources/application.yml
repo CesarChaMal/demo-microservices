@@ -7,3 +7,36 @@ eureka:
     fetch-registry: false
   server:
     enable-self-preservation: false
+    eviction-interval-timer-in-ms: 15000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,metrics,env"
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+logging:
+  level:
+    com.netflix.eureka: INFO
+    com.netflix.discovery: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+info:
+  app:
+    name: eureka-server
+    description: Service Discovery Server
+    version: 1.0.0
+    patterns:
+      - "Service Discovery"
+      - "Health Check"
+      - "Metrics Collection"
+      - "Security Headers"

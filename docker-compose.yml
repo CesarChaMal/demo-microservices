@@ -18,6 +18,8 @@ services:
     environment:
       - EUREKA_CLIENT_REGISTERWITHEUREKA=false
       - EUREKA_CLIENT_FETCHREGISTRY=false
+      - MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info,metrics
+      - LOGGING_LEVEL_COM_NETFLIX_EUREKA=INFO
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8761/actuator/health | grep '\"status\":\"UP\"' >/dev/null"]
       interval: 10s
@@ -44,6 +46,10 @@ services:
       - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${EUREKA_SERVER_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=${REDIS_URL}
+      - METRICS_ENABLED=${METRICS_ENABLED}
+      - RATE_LIMIT_REQUESTS_PER_MINUTE=${RATE_LIMIT_REQUESTS_PER_MINUTE}
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health | grep '\"status\":\"UP\"' >/dev/null"]
       interval: 10s
@@ -62,6 +68,12 @@ services:
     depends_on:
       eureka-server:
         condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=${REDIS_URL}
+      - METRICS_ENABLED=${METRICS_ENABLED}
+      - RATE_LIMIT_REQUESTS_PER_MINUTE=${RATE_LIMIT_REQUESTS_PER_MINUTE}
     restart: unless-stopped
     networks:
       - micro_net
@@ -74,6 +86,12 @@ services:
     depends_on:
       eureka-server:
         condition: service_healthy
+    environment:
+      - FLASK_ENV=production
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=${REDIS_URL}
+      - METRICS_ENABLED=${METRICS_ENABLED}
+      - RATE_LIMIT_REQUESTS_PER_MINUTE=${RATE_LIMIT_REQUESTS_PER_MINUTE}
     restart: unless-stopped
     networks:
       - micro_net

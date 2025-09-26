@@ -10,10 +10,179 @@ management:
   endpoints:
     web:
       exposure:
-        include: "health,info"
+        include: "health,info,metrics,circuitbreakers"
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      python-service:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+      node-service:
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 20s
+        sliding-window-size: 8
+        minimum-number-of-calls: 3
+  retry:
+    instances:
+      python-service:
+        max-attempts: 3
+        wait-duration: 1s
+      node-service:
+        max-attempts: 2
+        wait-duration: 500ms
+  bulkhead:
+    instances:
+      python-service:
+        max-concurrent-calls: 10
+        max-wait-duration: 2s
+      node-service:
+        max-concurrent-calls: 5
+        max-wait-duration: 1s
+  timelimiter:
+    instances:
+      node-service:
+        timeout-duration: 5s
+
+# OpenFeign Configuration
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 10000
+        loggerLevel: basic
+      python-service:
+        connectTimeout: 3000
+        readTimeout: 8000
+      node-service:
+        connectTimeout: 2000
+        readTimeout: 5000
+
+# Caching Configuration
+spring:
+  cache:
+    type: simple
+    cache-names:
+      - processedData
+      - cachedData
+      - serviceStats
+
+# Kafka Configuration
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: java-service-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.example.java_service.event"
+
+# Redis Configuration
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+# Feature Toggle Configuration
+  togglz:
+    console:
+      enabled: true
+    features:
+      NEW_CALCULATION_ALGORITHM:
+        enabled: true
+      ASYNC_PROCESSING:
+        enabled: false
+      DISTRIBUTED_CACHING:
+        enabled: true
+      CANARY_DEPLOYMENT:
+        enabled: false
+      RATE_LIMITING:
+        enabled: true
+
+# Database Configuration
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:testdb}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER:org.h2.Driver}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:} 
+  h2:
+    console:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+# Tracing Configuration
+  application:
+    name: java-service
+  zipkin:
+    base-url: http://localhost:9411
+  sleuth:
+    sampler:
+      probability: 1.0
+
+# RabbitMQ Configuration
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+
+# Security Configuration
+  security:
+    jwt:
+      secret: ${JWT_SECRET:demo-secret-change-in-production}
+      expiration: 3600000
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/auth/realms/microservices
+
+# WebFlux Configuration
+  webflux:
+    base-path: /reactive
 
 info:
   app:
     name: java-service
     description: Java demo microservice
     version: 1.0.0
+    patterns:
+      - "Circuit Breaker"
+      - "Saga Pattern"
+      - "Event Sourcing"
+      - "CQRS"
+      - "Outbox Pattern"
+      - "Distributed Lock"
+      - "Rate Limiting"
+      - "Cache-Aside"
+      - "Feature Toggle"
+      - "Idempotency"
+      - "Materialized View"
+      - "Canary Deployment"
+      - "Reactive Programming"
+      - "Event Streaming"
+      - "Hexagonal Architecture"
+      - "Message Queue"
+      - "Security"
+      - "Distributed Tracing"
