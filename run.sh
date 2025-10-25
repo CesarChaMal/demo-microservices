@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Default versions
-JAVA_VERSION="22"
+JAVA_VERSION="21"
 NODE_VERSION="20"
 PYTHON_VERSION="3.11"
 
@@ -34,31 +34,81 @@ print_usage() {
 }
 
 setup_java() {
-    echo -e "${YELLOW}Setting up Java $JAVA_VERSION...${NC}"
+    echo -e "${YELLOW}Setting up Java...${NC}"
+    
+    # Initialize SDKMAN
+    [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
+    
     if command -v sdk &> /dev/null; then
-        sdk use java $JAVA_VERSION || sdk install java $JAVA_VERSION
+        # Try Java 21 first, then 11
+        if sdk use java 21.fx-zulu 2>/dev/null || sdk use java 21-zulu 2>/dev/null; then
+            echo -e "${GREEN}Using Java 21 via SDKMAN${NC}"
+        elif sdk use java 11.fx-zulu 2>/dev/null || sdk use java 11-zulu 2>/dev/null; then
+            echo -e "${GREEN}Using Java 11 via SDKMAN${NC}"
+        else
+            echo -e "${YELLOW}Installing Java 21-zulu via SDKMAN...${NC}"
+            sdk install java 21-zulu
+            sdk use java 21-zulu
+        fi
+    elif command -v java &> /dev/null; then
+        CURRENT_JAVA=$(java -version 2>&1 | head -1 | cut -d'"' -f2)
+        echo -e "${GREEN}Using local Java version: $CURRENT_JAVA${NC}"
     else
-        echo -e "${RED}SDKMAN not found. Please install: curl -s https://get.sdkman.io | bash${NC}"
+        echo -e "${RED}Java not found. Install SDKMAN: curl -s https://get.sdkman.io | bash${NC}"
         exit 1
     fi
 }
 
 setup_node() {
-    echo -e "${YELLOW}Setting up Node.js $NODE_VERSION...${NC}"
+    echo -e "${YELLOW}Setting up Node.js...${NC}"
+    
+    # Initialize NVM
+    [[ -s "$HOME/.nvm/nvm.sh" ]] && source "$HOME/.nvm/nvm.sh"
+    
     if command -v nvm &> /dev/null; then
-        nvm use $NODE_VERSION || nvm install $NODE_VERSION
+        # Try Node 20 first, then 18
+        if nvm use 20 2>/dev/null; then
+            echo -e "${GREEN}Using Node.js 20 via NVM${NC}"
+        elif nvm use 18 2>/dev/null; then
+            echo -e "${GREEN}Using Node.js 18 via NVM${NC}"
+        else
+            echo -e "${YELLOW}Installing Node.js 20 via NVM...${NC}"
+            nvm install 20
+            nvm use 20
+        fi
+    elif command -v node &> /dev/null; then
+        CURRENT_NODE=$(node -v)
+        echo -e "${GREEN}Using local Node.js version: $CURRENT_NODE${NC}"
     else
-        echo -e "${RED}NVM not found. Please install: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash${NC}"
+        echo -e "${RED}Node.js not found. Install NVM: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash${NC}"
         exit 1
     fi
 }
 
 setup_python() {
-    echo -e "${YELLOW}Setting up Python $PYTHON_VERSION...${NC}"
+    echo -e "${YELLOW}Setting up Python...${NC}"
+    
+    # Initialize pyenv
+    export PATH="$HOME/.pyenv/bin:$PATH"
+    eval "$(pyenv init --path 2>/dev/null || true)"
+    eval "$(pyenv init - 2>/dev/null || true)"
+    
     if command -v pyenv &> /dev/null; then
-        pyenv global $PYTHON_VERSION || pyenv install $PYTHON_VERSION
+        # Try Python 3.11 first, then 3.13
+        if pyenv global 3.11 2>/dev/null; then
+            echo -e "${GREEN}Using Python 3.11 via pyenv${NC}"
+        elif pyenv global 3.13 2>/dev/null; then
+            echo -e "${GREEN}Using Python 3.13 via pyenv${NC}"
+        else
+            echo -e "${YELLOW}Installing Python 3.11 via pyenv...${NC}"
+            pyenv install 3.11
+            pyenv global 3.11
+        fi
+    elif command -v python &> /dev/null; then
+        CURRENT_PYTHON=$(python --version 2>&1 | cut -d' ' -f2)
+        echo -e "${GREEN}Using local Python version: $CURRENT_PYTHON${NC}"
     else
-        echo -e "${RED}pyenv not found. Please install: curl https://pyenv.run | bash${NC}"
+        echo -e "${RED}Python not found. Install pyenv: curl https://pyenv.run | bash${NC}"
         exit 1
     fi
 }

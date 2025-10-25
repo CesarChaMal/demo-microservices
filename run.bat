@@ -4,7 +4,7 @@ setlocal enabledelayedexpansion
 REM Demo Microservices Launcher Script for Windows
 REM Supports multiple deployment stacks with version management
 
-set "JAVA_VERSION=22"
+set "JAVA_VERSION=21"
 set "NODE_VERSION=20"
 set "PYTHON_VERSION=3.11"
 set "STACK="
@@ -78,33 +78,112 @@ echo   --help                    Show this help
 exit /b 1
 
 :setup_java
-echo Setting up Java %JAVA_VERSION%...
+echo Setting up Java...
+
+REM Initialize SDKMAN for Windows
+if exist "%USERPROFILE%\.sdkman\bin\sdkman-init.sh" (
+    call "%USERPROFILE%\.sdkman\bin\sdkman-init.sh"
+)
+
 where sdk >nul 2>&1
 if errorlevel 1 (
-    echo SDKMAN not found. Please install from https://sdkman.io/
-    exit /b 1
+    where java >nul 2>&1
+    if not errorlevel 1 (
+        for /f "tokens=3" %%i in ('java -version 2^>^&1 ^| findstr "version"') do set CURRENT_JAVA=%%i
+        set CURRENT_JAVA=!CURRENT_JAVA:"=!
+        echo Using local Java version: !CURRENT_JAVA!
+    ) else (
+        echo Java not found. Install SDKMAN: https://sdkman.io/
+        exit /b 1
+    )
+) else (
+    REM Try Java 21 first, then 11
+    sdk use java 21.fx-zulu >nul 2>&1 || sdk use java 21-zulu >nul 2>&1
+    if not errorlevel 1 (
+        echo Using Java 21 via SDKMAN
+    ) else (
+        sdk use java 11.fx-zulu >nul 2>&1 || sdk use java 11-zulu >nul 2>&1
+        if not errorlevel 1 (
+            echo Using Java 11 via SDKMAN
+        ) else (
+            echo Installing Java 21-zulu via SDKMAN...
+            sdk install java 21-zulu
+            sdk use java 21-zulu
+        )
+    )
 )
-sdk use java %JAVA_VERSION% || sdk install java %JAVA_VERSION%
 goto :eof
 
 :setup_node
-echo Setting up Node.js %NODE_VERSION%...
+echo Setting up Node.js...
+
+REM Initialize NVM for Windows
+if exist "%APPDATA%\nvm\nvm.exe" (
+    set "PATH=%APPDATA%\nvm;%PATH%"
+)
+
 where nvm >nul 2>&1
 if errorlevel 1 (
-    echo NVM not found. Please install from https://github.com/coreybutler/nvm-windows
-    exit /b 1
+    where node >nul 2>&1
+    if not errorlevel 1 (
+        for /f "tokens=1" %%i in ('node -v') do set CURRENT_NODE=%%i
+        echo Using local Node.js version: !CURRENT_NODE!
+    ) else (
+        echo Node.js not found. Install NVM: https://github.com/coreybutler/nvm-windows
+        exit /b 1
+    )
+) else (
+    REM Try Node 20 first, then 18
+    nvm use 20 >nul 2>&1
+    if not errorlevel 1 (
+        echo Using Node.js 20 via NVM
+    ) else (
+        nvm use 18 >nul 2>&1
+        if not errorlevel 1 (
+            echo Using Node.js 18 via NVM
+        ) else (
+            echo Installing Node.js 20 via NVM...
+            nvm install 20
+            nvm use 20
+        )
+    )
 )
-nvm use %NODE_VERSION% || nvm install %NODE_VERSION%
 goto :eof
 
 :setup_python
-echo Setting up Python %PYTHON_VERSION%...
+echo Setting up Python...
+
+REM Initialize pyenv for Windows
+if exist "%USERPROFILE%\.pyenv\pyenv-win\bin" (
+    set "PATH=%USERPROFILE%\.pyenv\pyenv-win\bin;%USERPROFILE%\.pyenv\pyenv-win\shims;%PATH%"
+)
+
 where pyenv >nul 2>&1
 if errorlevel 1 (
-    echo pyenv not found. Please install from https://github.com/pyenv-win/pyenv-win
-    exit /b 1
+    where python >nul 2>&1
+    if not errorlevel 1 (
+        for /f "tokens=2" %%i in ('python --version 2^>^&1') do set CURRENT_PYTHON=%%i
+        echo Using local Python version: !CURRENT_PYTHON!
+    ) else (
+        echo Python not found. Install pyenv: https://github.com/pyenv-win/pyenv-win
+        exit /b 1
+    )
+) else (
+    REM Try Python 3.11 first, then 3.13
+    pyenv global 3.11 >nul 2>&1
+    if not errorlevel 1 (
+        echo Using Python 3.11 via pyenv
+    ) else (
+        pyenv global 3.13 >nul 2>&1
+        if not errorlevel 1 (
+            echo Using Python 3.13 via pyenv
+        ) else (
+            echo Installing Python 3.11 via pyenv...
+            pyenv install 3.11
+            pyenv global 3.11
+        )
+    )
 )
-pyenv global %PYTHON_VERSION% || pyenv install %PYTHON_VERSION%
 goto :eof
 
 :run_docker_stack
