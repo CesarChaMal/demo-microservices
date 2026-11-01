@@ -69,19 +69,15 @@ narrative breaks.
   (`demo-java-service/.../client/NodeServiceClient.java`, `GoServiceClient.java`,
   `DotNetServiceClient.java`), wrapped in resilience4j `@CircuitBreaker` / `@Retry`, invoked
   from `EnterpriseController`.
-- **Node and Python call peers by Docker Compose hostname directly**
-  (`http://java-service:8080`, `http://python-service:5001`, `http://go-service:5002`) — Node
-  via the registry in `demo-node-service/patterns/integration/apiGateway.js`, Python via
-  `ExternalServiceClient` (`demo-python-service/patterns/resilience/circuit_breaker.py`) and
-  the registry in `demo-python-service/patterns/integration/api_gateway.py`. Asymmetry to
-  copy: Java is called at its `/calculate` route (its API-gateway pattern), everyone else at
-  `/process`.
-
-> **Known limitation:** Node/Python don't use Eureka *discovery* — they hardcode compose
-> hostnames. Works on `micro_net`, breaks outside Docker. A later change moves them to real
-> discovery (`getInstancesByAppId` / `py_eureka_client` discovery) and rewrites Step 7 of this
-> guide in the same PR. Until then, **follow the existing convention** (direct hostnames) so
-> the demo stays internally consistent.
+- **Node and Python resolve peers Eureka-first, compose-hostname fallback**
+  (`http://java-service:8080`, `http://python-service:5001`, `http://go-service:5002` are the
+  *fallbacks*, not the only answer). Each has a tiny resolver module —
+  `demo-node-service/discovery.js` (`peerUrl(appId, fallbackUrl)`, backed by
+  eureka-js-client's local registry cache) and `demo-python-service/discovery.py`
+  (`peer_url(app_id, fallback_url)`, plain Eureka REST + 10s TTL cache). URL resolution
+  happens at **call time**, so a peer's live instance address (pod IP on EKS, container IP in
+  compose) is used when the registry knows it. Asymmetry to copy: Java is called at its
+  `/calculate` route (its API-gateway pattern), everyone else at `/process`.
 
 ### Deployment modes — honest status
 
@@ -187,7 +183,7 @@ The existing services disagree on the env var name — don't inherit that confus
 | `demo-java-service` | `EUREKA_CLIENT_SERVICEURL_DEFAULTZONE` (Spring relaxed binding) | yml default `http://eureka-server:8761/eureka/` (container hostname — breaks bare-local) |
 | `demo-node-service` | `EUREKA_SERVER_HOST` | `localhost` (breaks in Docker) |
 | `demo-simple-node-service` | `EUREKA_HOST` | `eureka-server` |
-| `demo-python-service` | — hardcoded `http://eureka-server:8761/eureka/` | (breaks bare-local) |
+| `demo-python-service` | `EUREKA_SERVER_URL` (same var as go — registration *and* peer lookup in `discovery.py` both read it) | `http://eureka-server:8761/eureka/` (container hostname — override to `http://localhost:8761/eureka/` for bare-local) |
 | `demo-go-service` | `EUREKA_SERVER_URL` | `http://eureka-server:8761/eureka/` |
 
 #### 4a — With a client library
@@ -198,8 +194,9 @@ Reference implementations to copy from:
   The compose file passes `EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${EUREKA_SERVER_URL}`.
 - **Node:** `demo-node-service/app.js` (~line 838, `new Eureka({...})`) — `eureka-js-client`
   instance config. Set `EUREKA_SERVER_HOST=eureka-server` in your compose block.
-- **Python:** `demo-python-service/app.py` `register_with_eureka()` (~line 1367) — `py_eureka_client`.
-  Prefer an env-var override over the existing hardcode.
+- **Python:** `demo-python-service/app.py` `register_with_eureka()` (~line 1367) — `py_eureka_client`,
+  server URL taken from `discovery.py`'s `EUREKA_BASE` (i.e. `EUREKA_SERVER_URL`, go's var —
+  one override retargets registration *and* peer lookup).
 
 #### 4b — Without a client (Go, Rust, …) — plain REST against the Eureka API
 
@@ -361,28 +358,37 @@ Real clients return `Map<String, Object>` (no per-peer DTO), declare `GET /info`
    `EnterpriseController`'s constructor and call it from a route (see the
    `goResult`/`goInfo` entries there).
 
-**Node (required):** three registration points (there is no standalone URL-constants block —
-URLs live where they're used):
+**Node (required):** three registration points. URLs resolve Eureka-first via
+`demo-node-service/discovery.js` — `peerUrl(appId, fallbackUrl)` returns the registry's live
+instance URL (first `UP` instance, `ipAddr` before `hostName`) or your fallback, so the
+compose/k8s name you write is what's used when Eureka has nothing:
 
 1. Health indicator in `demo-node-service/app.js` (~lines 156–158, the
-   `ExternalServiceHealthIndicator` rows) plus a `healthService.addCheck('<your-service>', …)`
-   entry (~lines 163–165).
+   `ExternalServiceHealthIndicator` rows) — pass a **resolver closure**, not a string:
+   `() => peerUrl('GO-SERVICE', 'http://go-service:5002')` — plus a
+   `healthService.addCheck('<your-service>', …)` entry (~lines 163–165).
 2. Gateway registry in `demo-node-service/patterns/integration/apiGateway.js`
-   `serviceRegistry` (`'go-service': 'http://go-service:5002'`).
+   `serviceRegistry` (`'go-service': 'http://go-service:5002'`) — `forwardRequest` wraps the
+   entry in `peerUrl(route.targetService.toUpperCase(), …)` for you.
 3. If Node should call you under a circuit breaker, the outbound `axios.post` lives in
-   `demo-node-service/patterns/resilience/circuitBreaker.js`.
+   `demo-node-service/patterns/resilience/circuitBreaker.js` — template it:
+   `` `${peerUrl('GO-SERVICE', 'http://go-service:5002')}/process` ``.
 
-**Python (required):** two registration points:
+**Python (required):** two registration points, both resolved through
+`demo-python-service/discovery.py` — `peer_url(app_id, fallback_url)` hits the Eureka REST
+API (`GET /eureka/apps/<APP_ID>`, 10s TTL cache) and falls back to your compose/k8s name:
 
 1. `ExternalServiceClient` in `demo-python-service/patterns/resilience/circuit_breaker.py` —
    add a `call_<your>_service()` method next to `call_go_service()`
-   (`http://go-service:5002/process`). Note the asymmetry: Java is called at `/calculate`
-   (its API-gateway pattern route), Node/Go at `/process`.
+   (`peer_url('GO-SERVICE', 'http://go-service:5002') + '/process'`). Note the asymmetry:
+   Java is called at `/calculate` (its API-gateway pattern route), Node/Go at `/process`.
 2. The gateway registry in `demo-python-service/patterns/integration/api_gateway.py`
-   `service_registry` (`'go-service': 'http://go-service:5002'`).
+   `service_registry` (`'go-service': 'http://go-service:5002'`) — `_forward_request` wraps
+   the entry in `peer_url(route.target_service.upper(), …)` for you.
 
 (`app.py` only delegates to `ExternalServiceClient`; its `check_external_services()` health
-entry is a simulated stub that makes no real call.)
+entry resolves each peer through `peer_url` — no HTTP call, so it can't fail the health
+check, it reports the resolvable addresses.)
 
 **Simple/Lambda families:** skip this step — they don't participate in peer calls.
 
@@ -494,8 +500,8 @@ curl http://localhost:5002/health && curl http://localhost:5002/metrics
 | 2 | `docker-compose.yml` service block | existing | ✅ full family (simple/lambda aren't composed) |
 | 3 | `.env.security` (+ local `.env`) entry | existing | if new URLs |
 | 4 | Java: `<Service>Client.java` + fallback + resilience4j instance | existing | full ✅ |
-| 5 | Node: URL constant + health indicator + `apiGateway.js` registry | existing | full ✅ |
-| 6 | Python: URL constant in `patterns/resilience/circuit_breaker.py` | existing | full ✅ |
+| 5 | Node: `peerUrl()` fallback entry + health indicator + `apiGateway.js` registry | existing | full ✅ |
+| 6 | Python: `peer_url()` fallback in `patterns/resilience/circuit_breaker.py` | existing | full ✅ |
 | 7 | `CLAUDE.md` + `README.md` tables | existing | ✅ all families |
 | 8 | `<LANG>-PATTERNS.md` (32 headings) | new | full ✅ |
 | 9 | `infra/serverless/lambda_api.tf` (+ zip artifact) | existing | lambda only |

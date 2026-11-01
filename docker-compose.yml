@@ -96,6 +96,7 @@ services:
       - FLASK_ENV=production
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=${REDIS_URL}
+      - EUREKA_SERVER_URL=${EUREKA_SERVER_URL}
       - METRICS_ENABLED=${METRICS_ENABLED}
       - RATE_LIMIT_REQUESTS_PER_MINUTE=${RATE_LIMIT_REQUESTS_PER_MINUTE}
     # python:3.11-slim ships no curl — probe with the stdlib instead

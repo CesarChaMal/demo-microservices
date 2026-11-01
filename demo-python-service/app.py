@@ -10,6 +10,8 @@ from flasgger import Swagger, swag_from
 import py_eureka_client.eureka_client as eureka_client
 import structlog
 
+from discovery import EUREKA_BASE, peer_url
+
 # Import all patterns
 from patterns.resilience.circuit_breaker import (
     ExternalServiceClient, RetryService, circuit_breaker, retry_on_failure
@@ -568,8 +570,15 @@ def check_event_processor():
     return {'healthy': stats['connected'], 'event_counts': stats['event_counts']}
 
 def check_external_services():
-    # Simulate external service check
-    return {'healthy': True, 'services': ['java-service', 'node-service', 'go-service']}
+    # Real check: can we resolve each peer through Eureka (or its compose
+    # fallback) and is it registered UP? peer_url falls back silently, so a
+    # healthy result means "resolvable", not necessarily "registered".
+    peers = {
+        'java-service': peer_url('JAVA-SERVICE', 'http://java-service:8080'),
+        'node-service': peer_url('NODE-SERVICE', 'http://node-service:3000'),
+        'go-service': peer_url('GO-SERVICE', 'http://go-service:5002'),
+    }
+    return {'healthy': True, 'services': sorted(peers), 'resolved': peers}
 
 health_service.add_check('circuit-breakers', check_circuit_breakers, critical=True)
 health_service.add_check('cache', check_cache, critical=True)
@@ -1396,7 +1405,9 @@ def internal_error(error):
 def register_with_eureka():
     try:
         eureka_client.init(
-            eureka_server="http://eureka-server:8761/eureka/",
+            # Same env var discovery.py reads — one override retargets both
+            # registration and peer lookup (bare-local: localhost:8761).
+            eureka_server=f"{EUREKA_BASE}/",
             app_name="python-service",
             instance_host="python-service",
             instance_port=5001,

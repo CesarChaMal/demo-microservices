@@ -28,6 +28,7 @@ const { TransactionCoordinator, ResourceManager } = require('./patterns/transact
 const { APIGateway, Route, AntiCorruptionLayer, StranglerFig, GatewayCircuitBreaker } = require('./patterns/integration/apiGateway');
 const { AdvancedAsyncProcessor, EnhancedReactiveStream, AdvancedBackpressureHandler, WorkerThreadPool, PerformanceMonitor } = require('./patterns/performance/advanced');
 const config = require('./config');
+const { peerUrl, setEurekaClient } = require('./discovery');
 const { AuthenticationService, authRequired } = require('./patterns/security/authentication');
 const { AsyncProcessor, ReactiveStream, WorkerPool, BackpressureHandler } = require('./patterns/performance/async');
 const { ProcessingService, CommandHandler, QueryHandler, EventStore, ProcessingRepository, ValueGreaterThanSpecification, AlgorithmTypeSpecification } = require('./patterns/architectural/hexagonal');
@@ -154,9 +155,11 @@ const authService = new AuthenticationService(config.jwt.secret);
 // Comprehensive health checks
 const circuitBreakerHealthIndicator = new CircuitBreakerHealthIndicator(externalServiceClient);
 const databaseHealthIndicator = new DatabaseHealthIndicator();
-const pythonServiceHealthIndicator = new ExternalServiceHealthIndicator('python-service', 'http://python-service:5001');
-const javaServiceHealthIndicator = new ExternalServiceHealthIndicator('java-service', 'http://java-service:8080');
-const goServiceHealthIndicator = new ExternalServiceHealthIndicator('go-service', 'http://go-service:5002');
+// Peer URLs resolve through Eureka on every check; the compose/k8s name is
+// the fallback (see discovery.js).
+const pythonServiceHealthIndicator = new ExternalServiceHealthIndicator('python-service', () => peerUrl('PYTHON-SERVICE', 'http://python-service:5001'));
+const javaServiceHealthIndicator = new ExternalServiceHealthIndicator('java-service', () => peerUrl('JAVA-SERVICE', 'http://java-service:8080'));
+const goServiceHealthIndicator = new ExternalServiceHealthIndicator('go-service', () => peerUrl('GO-SERVICE', 'http://go-service:5002'));
 const cacheHealthIndicator = new CacheHealthIndicator(multiLevelCache);
 
 healthService.addCheck('circuit-breakers', () => circuitBreakerHealthIndicator.check(), { critical: true });
@@ -890,6 +893,11 @@ const eurekaClient = new Eureka({
 });
 
 eurekaClient.logger.level('warn');
+
+// Hand the client to the peer resolver (discovery.js). Lazy on purpose: the
+// indicators and gateway above were built before this client existed; they
+// only dereference it at request time.
+setEurekaClient(eurekaClient);
 eurekaClient.start((error) => {
     if (error) {
         logger.error('Eureka registration failed:', error);

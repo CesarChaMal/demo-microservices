@@ -8,6 +8,8 @@ from circuitbreaker import circuit
 import requests
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
+from discovery import peer_url
+
 logger = logging.getLogger(__name__)
 
 class CircuitBreakerState(Enum):
@@ -111,8 +113,9 @@ class ExternalServiceClient:
     @circuit(failure_threshold=5, recovery_timeout=30, expected_exception=requests.RequestException)
     def call_java_service(self, data: Dict[str, Any]) -> Dict[str, Any]:
         try:
+            # Eureka-resolved peer URL; compose/k8s name is the fallback.
             response = requests.post(
-                'http://java-service:8080/calculate',
+                peer_url('JAVA-SERVICE', 'http://java-service:8080') + '/calculate',
                 json=data,
                 timeout=5,
                 headers={'Content-Type': 'application/json'}
@@ -127,7 +130,7 @@ class ExternalServiceClient:
     def call_node_service(self, data: Dict[str, Any]) -> Dict[str, Any]:
         try:
             response = requests.post(
-                'http://node-service:3000/process',
+                peer_url('NODE-SERVICE', 'http://node-service:3000') + '/process',
                 json=data,
                 timeout=5,
                 headers={'Content-Type': 'application/json'}
@@ -142,7 +145,7 @@ class ExternalServiceClient:
     def call_go_service(self, data: Dict[str, Any]) -> Dict[str, Any]:
         try:
             response = requests.post(
-                'http://go-service:5002/process',
+                peer_url('GO-SERVICE', 'http://go-service:5002') + '/process',
                 json=data,
                 timeout=5,
                 headers={'Content-Type': 'application/json'}

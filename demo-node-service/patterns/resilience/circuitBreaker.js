@@ -1,5 +1,6 @@
 const CircuitBreaker = require('opossum');
 const axios = require('axios');
+const { peerUrl } = require('../../discovery');
 
 class NodeCircuitBreaker {
     constructor(options = {}) {
@@ -65,15 +66,16 @@ class ExternalServiceClient {
     }
     
     async callPythonService(data) {
-        const response = await axios.post('http://python-service:5001/process', data, {
+        // Eureka-resolved peer URL; compose/k8s name is the fallback.
+        const response = await axios.post(`${peerUrl('PYTHON-SERVICE', 'http://python-service:5001')}/process`, data, {
             timeout: 5000,
             headers: { 'Content-Type': 'application/json' }
         });
         return response.data;
     }
-    
+
     async callJavaService(data) {
-        const response = await axios.post('http://java-service:8080/calculate', data, {
+        const response = await axios.post(`${peerUrl('JAVA-SERVICE', 'http://java-service:8080')}/calculate`, data, {
             timeout: 5000,
             headers: { 'Content-Type': 'application/json' }
         });

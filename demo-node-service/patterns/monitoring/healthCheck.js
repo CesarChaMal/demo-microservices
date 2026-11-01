@@ -223,7 +223,13 @@ class ExternalServiceHealthIndicator {
     async check() {
         try {
             const startTime = Date.now();
-            const response = await axios.get(`${this.serviceUrl}/info`, {
+            // serviceUrl accepts a string or a () => string resolver, so a
+            // peer registered in Eureka can be checked at its live instance
+            // address (see app.js wiring peerUrl() in).
+            const serviceUrl = typeof this.serviceUrl === 'function'
+                ? this.serviceUrl()
+                : this.serviceUrl;
+            const response = await axios.get(`${serviceUrl}/info`, {
                 timeout: 3000
             });
             const responseTime = Date.now() - startTime;
