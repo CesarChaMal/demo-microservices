@@ -15,7 +15,7 @@ public class ReactiveController {
     public Mono<Map<String, Object>> processReactive(@RequestBody Map<String, Integer> request) {
         return Mono.fromCallable(() -> {
             Integer value = request.get("value");
-            return Map.of(
+            return Map.<String, Object>of(
                 "result", value * 2,
                 "type", "reactive",
                 "thread", Thread.currentThread().getName()
