@@ -40,7 +40,7 @@ checklist, no Step 7 peer wiring — adding a service behind it is one route blo
 | 5002 | `demo-go-service` | in use |
 | 5003 | `demo-dotnet-service` | reserved |
 | 6379 | Redis (`redis:7-alpine`) | in use |
-| 5672 / 15672 | RabbitMQ (amqp / management UI) | reserved |
+| 5672 / 15672 | RabbitMQ (`rabbitmq:3.13-management`, amqp / management UI) | in use |
 
 Taking a reserved port? Update this table in the same commit. Simple-family services aren't
 listed — they're not wired into docker-compose and only occupy a port when run bare (typically

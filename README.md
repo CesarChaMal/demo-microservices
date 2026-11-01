@@ -28,6 +28,7 @@ This project demonstrates a complete microservices ecosystem with:
 | **Go Service** | chi router + Go 1.22 | 5002 | Go API service with Eureka registration (raw REST client) |
 | **MySQL Database** | MySQL 8.0 | 3306 | Persistent data storage |
 | **Redis** | Redis 7 Alpine | 6379 | Cache backing for caching patterns |
+| **RabbitMQ** | RabbitMQ 3.13 (management) | 5672 / 15672 | Message broker for the messaging patterns (management UI on 15672) |
 
 ### Simplified Services
 
@@ -70,6 +71,7 @@ run.bat docker
 - Node Service API: http://localhost:3000/api-docs
 - Python Service API: http://localhost:5001/apidocs
 - Go Service API: http://localhost:5002/info
+- RabbitMQ Management UI: http://localhost:15672 (credentials in `.env`) — watch the `orders` queue from the Go messaging patterns
 
 ### 2. Local Development
 
@@ -193,6 +195,7 @@ services:
   python-service:   # Flask API
   go-service:       # Go (chi) API
   redis:           # Cache for the caching patterns
+  rabbitmq:        # Message broker for the messaging patterns (management UI :15672)
   mysql:           # Database with health checks
 ```
 

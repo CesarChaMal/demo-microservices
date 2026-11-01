@@ -104,8 +104,13 @@ services:
     depends_on:
       eureka-server:
         condition: service_healthy
+      # Started (not healthy-gated): the broker client connects lazily and
+      # re-dials, so pattern routes stay up even while RabbitMQ boots.
+      rabbitmq:
+        condition: service_started
     environment:
       - EUREKA_SERVER_URL=${EUREKA_SERVER_URL}
+      - RABBITMQ_URL=${RABBITMQ_URL}
     healthcheck:
       test: ["CMD", "/app/healthcheck"]
       interval: 10s
@@ -153,6 +158,29 @@ services:
       timeout: 5s
       retries: 12
       start_period: 10s
+    restart: unless-stopped
+    networks:
+      - micro_net
+
+  # Message broker backing the messaging patterns (Message Producer in
+  # demo-go-service). AMQP on 5672, management UI on 15672 (demo creds in
+  # .env). Infrastructure like redis/mysql, not a service family: the go
+  # service falls back to its in-process buffer when RABBITMQ_URL is unset.
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
     restart: unless-stopped
     networks:
       - micro_net

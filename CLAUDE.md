@@ -40,6 +40,8 @@ This is a **comprehensive microservices architecture demonstration** featuring:
 | **demo-python-service** | Flask 3.0.0, Python 3.11 | 5001 | Full-featured Python microservice with 32 patterns |
 | **demo-go-service** | net/http, Go 1.22 | 5002 | Full-featured Go microservice with 32 patterns |
 | **mysql** | MySQL 8.0 | 3306 | Persistent data storage with health checks |
+| **redis** | Redis 7 Alpine | 6379 | Cache backing for the caching patterns |
+| **rabbitmq** | RabbitMQ 3.13 (management) | 5672 / 15672 | Message broker for the messaging patterns (Go, `RABBITMQ_URL`) |
 
 ### Simplified Services
 
@@ -132,7 +134,7 @@ demo-microservices/
 │
 ├── demo-go-service/               # Full Go Microservice (port 5002)
 │   ├── main.go                    # Router, contract endpoints, Eureka wiring
-│   ├── internal/                  # eureka/ (REST client), healthcheck/ (probe binary)
+│   ├── internal/                  # eureka/ (REST client), broker/ (RabbitMQ client), healthcheck/ (probe binary)
 │   └── patterns/                  # Same category structure as Java/Node/Python
 │
 ├── demo-simple-*/                 # Simplified versions (minimal patterns)
@@ -194,7 +196,7 @@ All full-featured services organize patterns into **10 categories**:
 | **Java** | Spring Boot | 3.3.1 | Spring Cloud 2023.0.2, JPA, Spring Security |
 | **Node.js** | Express | 4.21.1 | Eureka JS Client, Swagger, Helmet |
 | **Python** | Flask | 3.0.0 | py-eureka-client, Flasgger, SQLAlchemy |
-| **Go** | chi router | v5 | net/http, Eureka over raw REST (`internal/eureka`) |
+| **Go** | chi router | v5 | net/http, Eureka over raw REST (`internal/eureka`), RabbitMQ over amqp091-go (`internal/broker`) |
 
 ### Runtime Versions
 
@@ -608,6 +610,7 @@ CI runs every family's tests on push/PR — see `.github/workflows/ci.yml`.
 - Go Service: http://localhost:5002
 - MySQL: localhost:3306
 - Redis: localhost:6379
+- RabbitMQ Management UI: http://localhost:15672 (amqp on 5672; credentials in `.env`)
 
 **Features:**
 - Health check dependencies ensure correct startup order
