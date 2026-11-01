@@ -1,0 +1,10 @@
+-- run the microservice (.NET 8 SDK required)
+dotnet run
+
+-- bare-local run: point the Eureka client at localhost and match the compose port
+EUREKA_SERVER_URL=http://localhost:8761/eureka/ ASPNETCORE_URLS=http://+:5003 dotnet run
+
+-- publish a Release build
+dotnet publish -c Release -o publish
+
+curl -v -X POST http://localhost:5003/process -H "Content-Type: application/json" -d "{\"value\": 10}"

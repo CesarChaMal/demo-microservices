@@ -1,5 +1,6 @@
 package com.example.java_service.controller;
 
+import com.example.java_service.client.DotNetServiceClient;
 import com.example.java_service.client.GoServiceClient;
 import com.example.java_service.client.NodeServiceClient;
 import com.example.java_service.client.PythonServiceClient;
@@ -27,6 +28,7 @@ public class EnterpriseController {
     private final PythonServiceClient pythonServiceClient;
     private final NodeServiceClient nodeServiceClient;
     private final GoServiceClient goServiceClient;
+    private final DotNetServiceClient dotNetServiceClient;
     private final CommandHandler commandHandler;
     private final QueryHandler queryHandler;
     private final EventPublisher eventPublisher;
@@ -34,12 +36,14 @@ public class EnterpriseController {
     public EnterpriseController(PythonServiceClient pythonServiceClient,
                                NodeServiceClient nodeServiceClient,
                                GoServiceClient goServiceClient,
+                               DotNetServiceClient dotNetServiceClient,
                                CommandHandler commandHandler,
                                QueryHandler queryHandler,
                                EventPublisher eventPublisher) {
         this.pythonServiceClient = pythonServiceClient;
         this.nodeServiceClient = nodeServiceClient;
         this.goServiceClient = goServiceClient;
+        this.dotNetServiceClient = dotNetServiceClient;
         this.commandHandler = commandHandler;
         this.queryHandler = queryHandler;
         this.eventPublisher = eventPublisher;
@@ -105,6 +109,8 @@ public class EnterpriseController {
             Map<String, Object> nodeInfo = nodeServiceClient.getInfo();
             Map<String, Object> goResult = goServiceClient.process(Map.of("value", request.getValue()));
             Map<String, Object> goInfo = goServiceClient.getInfo();
+            Map<String, Object> dotnetResult = dotNetServiceClient.process(Map.of("value", request.getValue()));
+            Map<String, Object> dotnetInfo = dotNetServiceClient.getInfo();
 
             return Map.of(
                 "python", pythonResult,
@@ -112,6 +118,8 @@ public class EnterpriseController {
                 "nodeInfo", nodeInfo,
                 "go", goResult,
                 "goInfo", goInfo,
+                "dotnet", dotnetResult,
+                "dotnetInfo", dotnetInfo,
                 "pattern", "Service Aggregation with OpenFeign"
             );
         } catch (Exception e) {

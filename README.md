@@ -8,7 +8,7 @@ This project demonstrates a complete microservices ecosystem with:
 
 - **Service Discovery**: Netflix Eureka Server
 - **API Gateway**: Spring Cloud Gateway — single entry point routing to every service via Eureka (`lb://`)
-- **Multiple Technology Stacks**: Java (Spring Boot), Node.js (Express), Python (Flask), Go (chi)
+- **Multiple Technology Stacks**: Java (Spring Boot), Node.js (Express), Python (Flask), Go (chi), C# (ASP.NET Core)
 - **Pattern Catalog**: 32 canonical microservices patterns implemented per language (`JAVA-PATTERNS.md`, `NODE-PATTERNS.md`, `PYTHON-PATTERNS.md`, `GO-PATTERNS.md`)
 - **Database**: MySQL with connection pooling; Redis for the caching patterns
 - **API Documentation**: Swagger/OpenAPI integration
@@ -26,6 +26,7 @@ This project demonstrates a complete microservices ecosystem with:
 | **Node Service** | Express.js + Node 22 | 3000 | Lightweight API service |
 | **Python Service** | Flask + Python 3.11 | 5001 | Data processing service |
 | **Go Service** | chi router + Go 1.22 | 5002 | Go API service with Eureka registration (raw REST client) |
+| **.NET Service** | ASP.NET Core 8 + C# 12 | 5003 | Contract-first .NET service with Eureka registration (Steeltoe client) |
 | **MySQL Database** | MySQL 8.0 | 3306 | Persistent data storage |
 | **Redis** | Redis 7 Alpine | 6379 | Cache backing for caching patterns |
 | **RabbitMQ** | RabbitMQ 3.13 (management) | 5672 / 15672 | Message broker for the messaging patterns (management UI on 15672) |
@@ -33,6 +34,8 @@ This project demonstrates a complete microservices ecosystem with:
 ### Simplified Services
 
 Each full service has a `demo-simple-*` counterpart (`demo-simple-java-service`, `demo-simple-node-service`, `demo-simple-python-service`, `demo-simple-go-service`) — a minimal same-contract variant (`GET /info`, `POST /process`) for comparing the skeleton across languages. They are not wired into docker-compose; see `ADDING_A_MICROSERVICE.md` for the family rules.
+
+.NET enters at the **contract-first** tier: `demo-dotnet-service` implements the contract (`/info`, `/health`, `POST /process`) plus Eureka registration through a real client (Steeltoe — guide Step 4a), but no pattern catalog yet. It is the seed shape a new language starts from before growing to the full family.
 
 ### Lambda Functions
 - **Java Lambda**: Serverless Spring Boot application
@@ -71,6 +74,7 @@ run.bat docker
 - Node Service API: http://localhost:3000/api-docs
 - Python Service API: http://localhost:5001/apidocs
 - Go Service API: http://localhost:5002/info
+- .NET Service API: http://localhost:5003/info
 - RabbitMQ Management UI: http://localhost:15672 (credentials in `.env`) — watch the `orders` queue from the Go messaging patterns
 
 ### 2. Local Development
@@ -138,6 +142,7 @@ Services automatically register with Eureka Server:
 - Node Service: `NODE-SERVICE`  
 - Python Service: `PYTHON-SERVICE`
 - Go Service: `GO-SERVICE`
+- .NET Service: `DOTNET-SERVICE`
 
 ## 🏗️ Infrastructure
 
@@ -194,6 +199,7 @@ services:
   node-service:     # Express.js API
   python-service:   # Flask API
   go-service:       # Go (chi) API
+  dotnet-service:   # .NET (ASP.NET Core) API
   redis:           # Cache for the caching patterns
   rabbitmq:        # Message broker for the messaging patterns (management UI :15672)
   mysql:           # Database with health checks
@@ -207,6 +213,7 @@ services:
 - Node Service: http://localhost:3000/info
 - Python Service: http://localhost:5001/info
 - Go Service: http://localhost:5002/health
+- .NET Service: http://localhost:5003/health
 
 ### Docker Health Checks
 - **MySQL**: `mysqladmin ping` with retry logic
@@ -298,6 +305,9 @@ cd demo-python-service && python -m pytest tests/ -q
 
 # Go Service (build is the smoke test)
 cd demo-go-service && go build ./...
+
+# .NET Service (build is the smoke test)
+cd demo-dotnet-service && dotnet build
 ```
 
 CI (`.github/workflows/ci.yml`) runs every service family's build and tests on push and PR.
@@ -315,6 +325,7 @@ curl http://localhost:8761/eureka/apps
 - **Node.js**: Express 4.21.1, Eureka JS Client, Node 22
 - **Python**: Flask 3.0.0, py-eureka-client, Python 3.11
 - **Go**: chi v5, Eureka over raw REST (`internal/eureka`), Go 1.22
+- **C#**: ASP.NET Core 8 minimal API, Steeltoe Eureka client, .NET 8
 
 ### Infrastructure & Security
 - **Containerization**: Docker, Docker Compose with health checks
@@ -326,7 +337,7 @@ curl http://localhost:8761/eureka/apps
 ### Development Tools
 - **API Documentation**: Swagger/OpenAPI 3.0
 - **Version Management**: SDKMAN, NVM, pyenv
-- **Build Tools**: Maven, npm, pip, go
+- **Build Tools**: Maven, npm, pip, go, dotnet
 - **CI**: GitHub Actions (`.github/workflows/ci.yml`)
 - **Deployment**: Multi-environment scripts (run.sh/run.bat)
 
@@ -359,7 +370,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Confirm RDS encryption is properly configured
 
 **Port conflicts:**
-- Ensure ports 3000, 5001, 5002, 8080, 8761, 3306, 6379 are available
+- Ensure ports 3000, 5001, 5002, 5003, 8080, 8081, 8761, 3306, 6379 are available
 - Modify port mappings in `docker-compose.yml` if needed
 - Check security group rules for AWS deployments
 

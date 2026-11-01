@@ -25,8 +25,8 @@ This is a **comprehensive microservices architecture demonstration** featuring:
 
 - **Purpose**: Educational and demonstration repository showcasing production-ready microservices patterns
 - **Architecture**: Polyglot microservices with service discovery, multiple deployment strategies, and cloud-native patterns
-- **Scale**: 13 services (5 full-featured + 5 simplified + 3 serverless) + 2 Eureka servers + 1 API gateway, 32 canonical microservices patterns
-- **Languages**: Java, Node.js, Python, Go
+- **Scale**: 14 services (5 full-featured + 5 simplified + 3 serverless + 1 contract-first .NET) + 2 Eureka servers + 1 API gateway, 32 canonical microservices patterns
+- **Languages**: Java, Node.js, Python, Go, C#
 - **Deployment**: Docker Compose, Local Development, AWS Lambda (maintained), AWS EKS (planned)
 
 ### Core Services
@@ -39,6 +39,7 @@ This is a **comprehensive microservices architecture demonstration** featuring:
 | **demo-node-service** | Express 4.21.1, Node 22 | 3000 | Full-featured Node.js microservice with 32 patterns |
 | **demo-python-service** | Flask 3.0.0, Python 3.11 | 5001 | Full-featured Python microservice with 32 patterns |
 | **demo-go-service** | net/http, Go 1.22 | 5002 | Full-featured Go microservice with 32 patterns |
+| **demo-dotnet-service** | ASP.NET Core 8 minimal API, C# 12 | 5003 | Contract-first .NET member — Steeltoe Eureka client (guide Step 4a); no pattern catalog yet |
 | **mysql** | MySQL 8.0 | 3306 | Persistent data storage with health checks |
 | **redis** | Redis 7 Alpine | 6379 | Cache backing for the caching patterns |
 | **rabbitmq** | RabbitMQ 3.13 (management) | 5672 / 15672 | Message broker for the messaging patterns (Go, `RABBITMQ_URL`) |
@@ -137,6 +138,11 @@ demo-microservices/
 │   ├── internal/                  # eureka/ (REST client), broker/ (RabbitMQ client), healthcheck/ (probe binary)
 │   └── patterns/                  # Same category structure as Java/Node/Python
 │
+├── demo-dotnet-service/           # Contract-first .NET Microservice (port 5003, Steeltoe Eureka)
+│   ├── Program.cs                 # Minimal API: /info, /health, POST /process + Eureka registration
+│   ├── appsettings.json           # Steeltoe Eureka client + instance config
+│   └── Dockerfile                 # Multi-stage sdk:8.0 → aspnet:8.0
+│
 ├── demo-simple-*/                 # Simplified versions (minimal patterns)
 │
 ├── demo-lambda-*/                 # Serverless functions
@@ -197,12 +203,15 @@ All full-featured services organize patterns into **10 categories**:
 | **Node.js** | Express | 4.21.1 | Eureka JS Client, Swagger, Helmet |
 | **Python** | Flask | 3.0.0 | py-eureka-client, Flasgger, SQLAlchemy |
 | **Go** | chi router | v5 | net/http, Eureka over raw REST (`internal/eureka`), RabbitMQ over amqp091-go (`internal/broker`) |
+| **C#** | ASP.NET Core (minimal API) | 8 | Steeltoe.Discovery.Eureka 4.3.0 |
 
 ### Runtime Versions
 
 - **Java**: 22 (production services), 21 (lambda)
 - **Node.js**: 22 (production services and lambda)
 - **Python**: 3.11 (production services and lambda)
+- **Go**: 1.22
+- **.NET**: 8
 
 ### Infrastructure & DevOps
 
@@ -485,6 +494,7 @@ When working with this codebase, follow these conventions:
 | **Node** | node:test (built-in) | `tests/*.test.js` | `npm test` (≡ `node --test tests/`) |
 | **Python** | pytest | `tests/test_*.py` | `python -m pytest tests/ -q` |
 | **Go** | stdlib `testing` (build = smoke test) | per-pattern files | `go build ./...` / `go test ./...` |
+| **C#** | — (build = smoke test) | — | `dotnet build` in `demo-dotnet-service` |
 
 CI (`.github/workflows/ci.yml`) runs every family's build + tests on push and PR.
 
@@ -608,6 +618,7 @@ CI runs every family's tests on push/PR — see `.github/workflows/ci.yml`.
 - Node Service: http://localhost:3000
 - Python Service: http://localhost:5001
 - Go Service: http://localhost:5002
+- .NET Service: http://localhost:5003
 - MySQL: localhost:3306
 - Redis: localhost:6379
 - RabbitMQ Management UI: http://localhost:15672 (amqp on 5672; credentials in `.env`)
@@ -728,6 +739,7 @@ aws logs tail /aws/lambda/demo-node-lambda --follow
 
 Always identify which service(s) you're working with:
 - **Full-featured services**: `demo-java-service`, `demo-node-service`, `demo-python-service`, `demo-go-service`
+- **Contract-first services**: `demo-dotnet-service` (.NET member — contract + Eureka registration only, no pattern catalog)
 - **Simplified services**: `demo-simple-*` (minimal patterns for comparison)
 - **Lambda functions**: `demo-lambda-*` (serverless versions)
 - **Infrastructure**: `infra/` (Eureka Server lives here too)
@@ -1195,6 +1207,7 @@ curl http://localhost:8080/actuator/health  # Java
 curl http://localhost:3000/health           # Node
 curl http://localhost:5001/health           # Python
 curl http://localhost:5002/health           # Go
+curl http://localhost:5003/health           # .NET
 
 # Eureka registration
 curl http://localhost:8761/eureka/apps
@@ -2072,6 +2085,7 @@ curl http://localhost:8080/actuator/health  # Java
 curl http://localhost:3000/health           # Node
 curl http://localhost:5001/health           # Python
 curl http://localhost:5002/health           # Go
+curl http://localhost:5003/health           # .NET
 
 # Security validation
 ./validate-security.sh
