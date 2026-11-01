@@ -6,7 +6,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.stereotype.Component;
 import java.util.Map;
 
-@FeignClient(name = "python-service", fallback = PythonServiceFallback.class)
+// contextId is required because client/PythonServiceClient also targets "python-service";
+// two @FeignClient interfaces sharing a name must each declare a unique contextId.
+@FeignClient(name = "python-service", contextId = "openFeignPatternClient", fallback = PythonServiceFallback.class)
 public interface OpenFeignService {
     @PostMapping("/process")
     Map<String, Object> process(@RequestBody Map<String, Object> request);
