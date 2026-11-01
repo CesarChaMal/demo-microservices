@@ -1,7 +1,7 @@
 # CLAUDE.md - AI Assistant Guide
 
 > Comprehensive guide for AI assistants working with the Demo Microservices codebase.
-> Last Updated: 2025-11-13
+> Last Updated: 2026-11-01
 
 ## Table of Contents
 
@@ -27,16 +27,16 @@ This is a **comprehensive microservices architecture demonstration** featuring:
 - **Architecture**: Polyglot microservices with service discovery, multiple deployment strategies, and cloud-native patterns
 - **Scale**: 13 services (5 full-featured + 5 simplified + 3 serverless), 32 canonical microservices patterns
 - **Languages**: Java, Node.js, Python, Go
-- **Deployment**: Docker Compose, Local Development, AWS ECS, AWS Lambda
+- **Deployment**: Docker Compose, Local Development, AWS Lambda (maintained), AWS EKS (planned)
 
 ### Core Services
 
 | Service | Technology | Port | Purpose |
 |---------|------------|------|---------|
 | **demo-eureka-server** | Spring Boot 3.3.1, Java 22 | 8761 | Service discovery and registration (Netflix Eureka) |
-| **demo-java-service** | Spring Boot 3.3.1, Java 22 | 8080 | Full-featured Java microservice with 30+ patterns |
-| **demo-node-service** | Express 4.21.1, Node 20 | 3000 | Full-featured Node.js microservice with 38+ patterns |
-| **demo-python-service** | Flask 3.0.0, Python 3.11 | 5001 | Full-featured Python microservice with 36+ patterns |
+| **demo-java-service** | Spring Boot 3.3.1, Java 22 | 8080 | Full-featured Java microservice with 32 patterns |
+| **demo-node-service** | Express 4.21.1, Node 22 | 3000 | Full-featured Node.js microservice with 32 patterns |
+| **demo-python-service** | Flask 3.0.0, Python 3.11 | 5001 | Full-featured Python microservice with 32 patterns |
 | **demo-go-service** | net/http, Go 1.22 | 5002 | Full-featured Go microservice with 32 patterns |
 | **mysql** | MySQL 8.0 | 3306 | Persistent data storage with health checks |
 
@@ -62,16 +62,21 @@ This is a **comprehensive microservices architecture demonstration** featuring:
 demo-microservices/
 ├── .git/                           # Git repository
 ├── .gitignore                      # Git ignore patterns
-├── .env.security                   # Security configuration template
+├── .env.security                   # Security configuration template (real-looking values)
+├── .env.example                    # Placeholder-only template (cp .env.example .env)
 │
 ├── README.md                       # Main documentation
 ├── CLAUDE.md                       # This file - AI assistant guide
-├── JAVA-PATTERNS.md               # Java patterns documentation (16KB)
-├── NODE-PATTERNS.md               # Node.js patterns documentation (33KB)
-├── PYTHON-PATTERNS.md             # Python patterns documentation (55KB)
+├── ADDING_A_MICROSERVICE.md       # Authoritative guide for adding a new service
+├── JAVA-PATTERNS.md               # Java patterns documentation
+├── NODE-PATTERNS.md               # Node.js patterns documentation
+├── PYTHON-PATTERNS.md             # Python patterns documentation
+├── GO-PATTERNS.md                 # Go patterns documentation
 ├── SECURITY-FIXES.md              # Security improvements log
 ├── CRITICAL-FIXES-COMPLETE.md     # Critical fixes report
-├── PATTERN-REVIEW-COMPLETE.md     # Pattern implementation review
+├── PATTERN-REVIEW-COMPLETE.md     # Pattern review (canonical 32-pattern list)
+├── LICENSE                        # MIT license
+├── .github/workflows/ci.yml       # CI: build/test all families + infra/script validation
 │
 ├── demo-eureka-server/            # Service Discovery
 │   ├── src/main/java/             # Java source code
@@ -80,7 +85,7 @@ demo-microservices/
 │   └── pom.xml                    # Maven dependencies
 │
 ├── demo-java-service/             # Full Java Microservice
-│   ├── src/main/java/com/demo/patterns/
+│   ├── src/main/java/com/example/java_service/patterns/
 │   │   ├── resilience/            # Circuit breaker, retry, bulkhead
 │   │   ├── caching/               # Cache-aside, write-through, multi-level
 │   │   ├── messaging/             # Kafka, outbox, event sourcing
@@ -130,28 +135,30 @@ demo-microservices/
 │   └── deployment configs
 │
 ├── db/                            # Database initialization
-│   └── init/                      # SQL scripts for MySQL setup
+│   └── init/                      # 01-schema.sql + 02-seed.sql for MySQL setup
 │
 ├── infra/                         # Infrastructure as Code (Terraform)
+│   ├── README.md                  # Stack status — maintained vs deprecated (read first)
+│   ├── serverless/                # Lambda + API Gateway (MAINTAINED)
+│   │   └── lambda_api.tf
+│   ├── docker/                    # ECS deployment configuration (DEPRECATED — broken)
+│   │   └── ecs_stack.tf
 │   ├── modules/
 │   │   ├── vpc/                   # VPC, subnets, gateways
 │   │   └── instances/             # EC2, security groups
-│   ├── docker/                    # ECS deployment configuration
-│   │   └── ecs_stack.tf
-│   ├── serverless/                # Lambda deployment
-│   │   └── lambda_api.tf
-│   ├── provider.tf                # AWS provider config
-│   ├── vars.tf                    # Variable definitions
-│   ├── rds.tf                     # RDS MySQL setup
-│   ├── s3.tf                      # S3 buckets
-│   └── role.tf                    # IAM roles
+│   ├── provider.tf                # AWS provider config (root stack — DEPRECATED)
+│   ├── vars.tf                    # Variable definitions (root stack — DEPRECATED)
+│   ├── rds.tf                     # RDS MySQL setup (root stack — DEPRECATED)
+│   ├── s3.tf                      # S3 buckets (root stack — DEPRECATED)
+│   └── role.tf                    # IAM roles (root stack — DEPRECATED)
 │
 ├── docker-compose.yml             # Container orchestration
 ├── run.sh / run.bat               # Multi-environment launcher scripts
 ├── create_stack.sh                # Stack creation automation
 ├── destroy_stack.sh               # Stack teardown automation
+├── scripts/build-lambda-zips.sh   # Builds infra/serverless/artifacts/*.zip
 ├── validate-security.sh           # Security validation script
-└── pattern-gap-analysis.sh        # Pattern coverage analysis
+└── pattern-gap-analysis.sh        # Pattern coverage analysis (must stay PASS)
 ```
 
 ### Pattern Organization
@@ -185,7 +192,7 @@ All full-featured services organize patterns into **10 categories**:
 ### Runtime Versions
 
 - **Java**: 22 (production services), 21 (lambda)
-- **Node.js**: 20 (production services), 22 (lambda)
+- **Node.js**: 22 (production services and lambda)
 - **Python**: 3.11 (production services and lambda)
 
 ### Infrastructure & DevOps
@@ -266,8 +273,8 @@ All full-featured services organize patterns into **10 categories**:
 
 2. **Configure Environment**
    ```bash
-   # Copy security template to .env
-   cp .env.security .env
+   # Copy the placeholder-only template to .env
+   cp .env.example .env
 
    # Edit .env with your values
    # IMPORTANT: Never commit .env to version control
@@ -409,7 +416,7 @@ pip install -r requirements.txt
 python app.py
 
 # Run tests
-python -m pytest
+python -m pytest tests/ -q
 ```
 
 ### Code Organization Conventions
@@ -417,9 +424,10 @@ python -m pytest
 When working with this codebase, follow these conventions:
 
 1. **Pattern Implementations**: Always place pattern code in the appropriate category folder
-   - Java: `src/main/java/com/demo/patterns/{category}/`
-   - Node: `patterns/{category}/`
-   - Python: `patterns/{category}/`
+   - Java: `src/main/java/com/example/java_service/patterns/{category}/`
+   - Node: `patterns/{category}/{patternName}.js` (camelCase filenames)
+   - Python: `patterns/{category}/{pattern_name}.py`
+   - Go: `patterns/{category}/{patternName}.go` (one file per pattern)
 
 2. **Configuration Files**:
    - Java: `src/main/resources/application.yml`
@@ -433,8 +441,8 @@ When working with this codebase, follow these conventions:
 
 4. **Test Files**:
    - Java: `src/test/java/**/*Test.java` or `*Tests.java`
-   - Node: `*.test.js` or `__tests__/*.js`
-   - Python: `test_*.py` or `*_test.py`
+   - Node: `tests/*.test.js` (node:test built-in runner)
+   - Python: `tests/test_*.py` (pytest)
 
 ### Hot Reload / Live Development
 
@@ -465,8 +473,11 @@ When working with this codebase, follow these conventions:
 | Language | Framework | Test Location | Command |
 |----------|-----------|---------------|---------|
 | **Java** | JUnit 5, Spring Boot Test | `src/test/java/` | `./mvnw test` |
-| **Node** | Jest, Supertest | `*.test.js` or `__tests__/` | `npm test` |
-| **Python** | pytest, pytest-flask | `test_*.py` or `tests/` | `python -m pytest` |
+| **Node** | node:test (built-in) | `tests/*.test.js` | `npm test` (≡ `node --test tests/`) |
+| **Python** | pytest | `tests/test_*.py` | `python -m pytest tests/ -q` |
+| **Go** | stdlib `testing` (build = smoke test) | per-pattern files | `go build ./...` / `go test ./...` |
+
+CI (`.github/workflows/ci.yml`) runs every family's build + tests on push and PR.
 
 ### Testing Patterns
 
@@ -488,22 +499,19 @@ When working with this codebase, follow these conventions:
 cd demo-java-service && ./mvnw test
 
 # Java - Run specific test class
-./mvnw test -Dtest=DemoJavaServiceApplicationTests
+./mvnw test -Dtest=JavaServiceApplicationTests
 
-# Node - Run all tests
+# Node - Run all tests (node:test built-in runner)
 cd demo-node-service && npm test
 
-# Node - Run with coverage
-npm test -- --coverage
+# Node - Run directly
+node --test tests/
 
 # Python - Run all tests
-cd demo-python-service && python -m pytest
+cd demo-python-service && python -m pytest tests/ -q
 
 # Python - Run with verbose output
-python -m pytest -v
-
-# Python - Run specific test file
-python -m pytest test_app.py
+python -m pytest tests/ -v
 ```
 
 ### Manual Testing
@@ -556,14 +564,13 @@ curl http://localhost:8761/eureka/apps/JAVA-SERVICE
 
 ### Test Coverage
 
-Services include tests for:
-- Core application startup
-- API endpoint functionality
-- Pattern implementations (circuit breaker, retry, cache, etc.)
-- Database integration
-- Eureka registration
-- Health checks
-- Security (JWT, rate limiting)
+Current state (seed tests — coverage grows with every change):
+- Processing contract math shared across services (default/double/triple/square + input validation)
+- Core pattern modules (e.g. MessageProducer bounded buffer + backpressure stats)
+- Pattern catalog structure (32 canonical pattern files per full service)
+- Java service Spring context startup
+
+CI runs every family's tests on push/PR — see `.github/workflows/ci.yml`.
 
 ---
 
@@ -591,7 +598,9 @@ Services include tests for:
 - Java Service: http://localhost:8080
 - Node Service: http://localhost:3000
 - Python Service: http://localhost:5001
+- Go Service: http://localhost:5002
 - MySQL: localhost:3306
+- Redis: localhost:6379
 
 **Features:**
 - Health check dependencies ensure correct startup order
@@ -631,47 +640,22 @@ docker-compose down -v  # Remove containers and volumes
 - NVM (Node.js management)
 - pyenv (Python management)
 
-### 3. AWS ECS Deployment (Container Orchestration)
+### 3. AWS ECS Deployment (DEPRECATED)
 
-**Use Case**: Production cloud deployment with containers
+> **Deprecated — quarantined.** The `infra/docker` ECS stack is broken
+> (invalid HCL, undeclared variables) and is excluded from CI. Do not extend
+> it. The maintained AWS paths are Lambda (`infra/serverless`) today and EKS
+> (`infra/eks`, planned) as the primary container target. See `infra/README.md`
+> for the full stack-status table.
 
-**Command:**
+**Historical command** (no longer expected to work):
 ```bash
 ./run.sh aws
 ```
 
-**Infrastructure Created:**
-- **VPC**: Custom VPC with public/private subnets
-- **ECS Cluster**: Fargate-based container orchestration
-- **RDS MySQL**: Managed database with encryption
-- **Load Balancer**: Application Load Balancer for traffic distribution
-- **Security Groups**: Restrictive ingress/egress rules
-- **IAM Roles**: Least-privilege access for services
-- **CloudWatch Logs**: Centralized logging
-
-**Terraform Workflow:**
-```bash
-cd infra/docker
-
-# Initialize Terraform
-terraform init
-
-# Preview changes
-terraform plan
-
-# Apply infrastructure
-terraform apply
-
-# Destroy infrastructure
-terraform destroy
-```
-
-**Key Features:**
-- Auto-scaling based on CPU/memory
-- Managed container orchestration
-- High availability across multiple AZs
-- Encrypted RDS storage
-- CloudWatch integration for monitoring
+The stack's intended building blocks (VPC, Fargate cluster, RDS, ALB, security
+groups, IAM roles, CloudWatch) are documented in git history; the replacement
+EKS stack reuses the same pieces via `terraform-aws-modules/eks`.
 
 ### 4. AWS Lambda Deployment (Serverless)
 
@@ -715,8 +699,8 @@ aws logs tail /aws/lambda/demo-node-lambda --follow
 
 ### Deployment Comparison
 
-| Aspect | Docker Compose | Local Dev | AWS ECS | AWS Lambda |
-|--------|----------------|-----------|---------|------------|
+| Aspect | Docker Compose | Local Dev | AWS ECS (deprecated) | AWS Lambda |
+|--------|----------------|-----------|----------------------|------------|
 | **Cost** | Free (local) | Free (local) | $$ (always running) | $ (pay per use) |
 | **Startup** | 30-60 seconds | 15-30 seconds | 2-3 minutes | <1 second (warm) |
 | **Scaling** | Manual | Manual | Auto-scaling | Automatic |
@@ -733,7 +717,7 @@ aws logs tail /aws/lambda/demo-node-lambda --follow
 #### 1. Service Identification
 
 Always identify which service(s) you're working with:
-- **Full-featured services**: `demo-java-service`, `demo-node-service`, `demo-python-service`
+- **Full-featured services**: `demo-java-service`, `demo-node-service`, `demo-python-service`, `demo-go-service`
 - **Simplified services**: `demo-simple-*` (minimal patterns for comparison)
 - **Lambda functions**: `demo-lambda-*` (serverless versions)
 - **Infrastructure**: `infra/` (Eureka Server lives here too)
@@ -759,9 +743,10 @@ When implementing or modifying patterns:
 **Example Pattern Locations:**
 ```
 Circuit Breaker:
-  - Java: src/main/java/com/demo/patterns/resilience/CircuitBreakerPattern.java
-  - Node: patterns/resilience/circuit-breaker.js
+  - Java: src/main/java/com/example/java_service/patterns/resilience/CircuitBreakerPattern.java
+  - Node: patterns/resilience/circuitBreaker.js
   - Python: patterns/resilience/circuit_breaker.py
+  - Go: patterns/resilience/ (one file per pattern, camelCase)
 ```
 
 #### 3. Environment Variables
@@ -777,7 +762,7 @@ Circuit Breaker:
 
 **How to add new environment variables:**
 
-1. Add to `.env.security` (template):
+1. Add to `.env.example` and `.env.security` (templates):
    ```bash
    NEW_CONFIG_VALUE=default-value-change-in-production
    ```
@@ -914,7 +899,7 @@ pip-audit  # or safety check
 - Adding new API endpoints (update Swagger annotations)
 - Changing deployment process (update `README.md`)
 - Adding new environment variables (update `.env.security`)
-- Changing infrastructure (update `infra/README.md` if exists)
+- Changing infrastructure (update `infra/README.md` — the stack-status doc)
 
 #### 11. Git Workflow
 
@@ -929,7 +914,7 @@ pip-audit  # or safety check
 - Reference issues if applicable: "Add rate limiting (fixes #123)"
 
 **Before committing:**
-1. Run tests: `./mvnw test` / `npm test` / `pytest`
+1. Run tests: `./mvnw test` / `npm test` / `python -m pytest tests/ -q`
 2. Run linters if configured
 3. Check for uncommitted `.env` files (should be in `.gitignore`)
 4. Verify no hardcoded credentials
@@ -946,7 +931,7 @@ pip-audit  # or safety check
 
 **Example pattern:**
 ```dockerfile
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 
@@ -1031,26 +1016,30 @@ Before deploying or committing code:
 
 ### Adding a New Microservices Pattern
 
+> Adding a whole new *service*? Follow **ADDING_A_MICROSERVICE.md** — the
+> authoritative step-by-step guide. This section covers adding a *pattern* to
+> the existing services.
+
 1. **Choose the pattern category** (resilience, caching, messaging, etc.)
 
-2. **Implement in all three languages** for consistency:
+2. **Implement in all four languages** for consistency:
 
    **Java:**
    ```bash
    # Create pattern class
-   touch demo-java-service/src/main/java/com/demo/patterns/{category}/{PatternName}Pattern.java
+   touch demo-java-service/src/main/java/com/example/java_service/patterns/{category}/{PatternName}Pattern.java
 
    # Create test class
-   touch demo-java-service/src/test/java/com/demo/patterns/{category}/{PatternName}PatternTests.java
+   touch demo-java-service/src/test/java/com/example/java_service/patterns/{category}/{PatternName}PatternTests.java
    ```
 
    **Node:**
    ```bash
-   # Create pattern module
-   touch demo-node-service/patterns/{category}/{pattern-name}.js
+   # Create pattern module (camelCase filename)
+   touch demo-node-service/patterns/{category}/{patternName}.js
 
-   # Create test file
-   touch demo-node-service/__tests__/patterns/{category}/{pattern-name}.test.js
+   # Create test file (node:test runner, flat tests/ dir)
+   touch demo-node-service/tests/{patternName}.test.js
    ```
 
    **Python:**
@@ -1062,6 +1051,12 @@ Before deploying or committing code:
    touch demo-python-service/tests/test_{pattern_name}.py
    ```
 
+   **Go:**
+   ```bash
+   # Create pattern file (one file per pattern, camelCase)
+   touch demo-go-service/patterns/{category}/{patternName}.go
+   ```
+
 3. **Document the pattern** in the appropriate `*-PATTERNS.md` file:
    - Pattern name and purpose
    - Theory/background
@@ -1071,10 +1066,14 @@ Before deploying or committing code:
 
 4. **Test the implementation**:
    ```bash
-   ./mvnw test  # Java
-   npm test     # Node
-   pytest       # Python
+   ./mvnw test                  # Java
+   npm test                     # Node
+   python -m pytest tests/ -q   # Python
+   go build ./...               # Go (compiles = smoke test)
    ```
+
+5. **Keep coverage honest**: `bash pattern-gap-analysis.sh` must stay PASS —
+   the canonical list is 32 patterns per language (see PATTERN-REVIEW-COMPLETE.md).
 
 ### Adding a New API Endpoint
 
@@ -1131,7 +1130,7 @@ Before deploying or committing code:
 
 ### Adding Environment Variable
 
-1. **Add to `.env.security`** (template):
+1. **Add to `.env.example` + `.env.security`** (templates):
    ```bash
    MY_NEW_CONFIG=default-value
    ```
@@ -1172,8 +1171,8 @@ docker-compose logs -f java-service
 
 # Local (check console output where service was started)
 
-# AWS ECS
-aws logs tail /ecs/java-service --follow
+# AWS ECS (deprecated stack — historical)
+# aws logs tail /ecs/java-service --follow
 
 # AWS Lambda
 aws logs tail /aws/lambda/demo-java-lambda --follow
@@ -1185,6 +1184,7 @@ aws logs tail /aws/lambda/demo-java-lambda --follow
 curl http://localhost:8080/actuator/health  # Java
 curl http://localhost:3000/health           # Node
 curl http://localhost:5001/health           # Python
+curl http://localhost:5002/health           # Go
 
 # Eureka registration
 curl http://localhost:8761/eureka/apps
@@ -1268,15 +1268,8 @@ docker-compose up --scale node-service=3
 # Note: You'll need to configure load balancer
 ```
 
-**AWS ECS:**
-```bash
-# Update desired count in Terraform
-# infra/docker/ecs_stack.tf
-desired_count = 3
-
-# Apply changes
-cd infra/docker && terraform apply
-```
+**AWS ECS (deprecated):** the `infra/docker` stack is quarantined — scaling
+moves to EKS (HPA on the k8s Deployment) when `infra/eks` lands.
 
 **AWS Lambda:**
 ```bash
@@ -1432,18 +1425,18 @@ pip-audit          # Python
 
 ## Pattern Documentation
 
-This repository implements **42+ microservices patterns** across Java, Node.js, and Python.
+This repository implements **the same 32 canonical patterns** across Java, Node.js, Python, and Go (the authoritative list is PATTERN-REVIEW-COMPLETE.md). The categories below illustrate the catalog:
 
 ### Pattern Categories
 
-1. **Resilience Patterns** (5 patterns)
+1. **Resilience Patterns**
    - Circuit Breaker
    - Retry with Exponential Backoff
    - Bulkhead
    - Timeout
    - Fallback
 
-2. **Caching Patterns** (7 patterns)
+2. **Caching Patterns**
    - Cache-Aside (Lazy Loading)
    - Write-Through
    - Write-Behind
@@ -1452,7 +1445,7 @@ This repository implements **42+ microservices patterns** across Java, Node.js, 
    - Cache Invalidation
    - Materialized View
 
-3. **Messaging Patterns** (6 patterns)
+3. **Messaging Patterns**
    - Event Streaming (Kafka)
    - Message Queue (RabbitMQ)
    - Outbox Pattern
@@ -1460,42 +1453,42 @@ This repository implements **42+ microservices patterns** across Java, Node.js, 
    - Event Sourcing
    - Saga Pattern
 
-4. **Transaction Patterns** (4 patterns)
+4. **Transaction Patterns**
    - Two-Phase Commit (2PC)
    - Distributed Lock
    - Idempotency
    - Transaction Manager
 
-5. **Architectural Patterns** (5 patterns)
+5. **Architectural Patterns**
    - Hexagonal Architecture
    - CQRS (Command Query Responsibility Segregation)
    - Repository Pattern
    - Specification Pattern
    - Domain Events
 
-6. **Integration Patterns** (4 patterns)
+6. **Integration Patterns**
    - API Gateway
    - Anti-Corruption Layer
    - Strangler Fig
    - Service Registry (Eureka)
 
-7. **Deployment Patterns** (3 patterns)
+7. **Deployment Patterns**
    - Feature Toggles
    - Canary Deployment
    - Blue-Green Deployment
 
-8. **Performance Patterns** (4 patterns)
+8. **Performance Patterns**
    - Async Processing
    - Reactive Streams
    - Worker Pool
    - Worker Threads
 
-9. **Monitoring Patterns** (3 patterns)
+9. **Monitoring Patterns**
    - Health Check (Liveness/Readiness)
    - Metrics Collection (Prometheus)
    - Distributed Tracing
 
-10. **Security Patterns** (3 patterns)
+10. **Security Patterns**
     - Rate Limiting (Token Bucket, Sliding Window, Adaptive)
     - Authentication (JWT)
     - Authorization (RBAC)
@@ -1504,9 +1497,9 @@ This repository implements **42+ microservices patterns** across Java, Node.js, 
 
 Detailed pattern documentation is available in:
 
-- **`JAVA-PATTERNS.md`** - Java implementations with Spring Boot (16KB, 32 patterns)
-- **`NODE-PATTERNS.md`** - Node.js implementations with Express (33KB, 38 patterns)
-- **`PYTHON-PATTERNS.md`** - Python implementations with Flask (55KB, 36 patterns)
+- **`JAVA-PATTERNS.md`** - Java implementations with Spring Boot (32 patterns)
+- **`NODE-PATTERNS.md`** - Node.js implementations with Express (32 patterns)
+- **`PYTHON-PATTERNS.md`** - Python implementations with Flask (32 patterns)
 - **`GO-PATTERNS.md`** - Go implementations with chi (32 patterns, one file per pattern)
 
 Each file includes:
@@ -1520,7 +1513,7 @@ Each file includes:
 
 **Java (`demo-java-service/`):**
 ```
-src/main/java/com/demo/patterns/
+src/main/java/com/example/java_service/patterns/
 ├── resilience/
 │   ├── CircuitBreakerPattern.java
 │   ├── RetryPattern.java
@@ -1535,11 +1528,11 @@ src/main/java/com/demo/patterns/
 ```
 patterns/
 ├── resilience/
-│   ├── circuit-breaker.js
+│   ├── circuitBreaker.js
 │   ├── retry.js
 │   └── ...
 ├── caching/
-│   ├── cache-aside.js
+│   ├── cacheAside.js
 │   └── ...
 └── [other categories]/
 ```
@@ -1554,6 +1547,15 @@ patterns/
 ├── caching/
 │   ├── cache_aside.py
 │   └── ...
+└── [other categories]/
+```
+
+**Go (`demo-go-service/`):**
+```
+patterns/
+├── resilience/
+│   ├── circuitBreaker.go
+│   └── ... (one file per pattern, camelCase)
 └── [other categories]/
 ```
 
@@ -1576,7 +1578,7 @@ public String callExternalService() {
 
 ```javascript
 // Node
-const CircuitBreaker = require('./patterns/resilience/circuit-breaker');
+const CircuitBreaker = require('./patterns/resilience/circuitBreaker');
 const breaker = new CircuitBreaker(externalServiceCall, {
     threshold: 5,
     timeout: 3000
@@ -1719,7 +1721,7 @@ docker system df
 
 # Pull base images manually first
 docker pull openjdk:22
-docker pull node:20
+docker pull node:22
 docker pull python:3.11
 ```
 
@@ -1732,8 +1734,8 @@ curl -s "https://get.sdkman.io" | bash
 source "$HOME/.sdkman/bin/sdkman-init.sh"
 
 # Install Java version
-sdk install java 21-zulu
-sdk use java 21-zulu
+sdk install java 22-tem
+sdk use java 22-tem
 
 # Verify
 java -version
@@ -1746,8 +1748,8 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
 source ~/.nvm/nvm.sh
 
 # Install Node version
-nvm install 20
-nvm use 20
+nvm install 22
+nvm use 22
 
 # Verify
 node -v
@@ -1775,8 +1777,9 @@ python --version
 
 **Terraform Errors:**
 ```bash
-# Re-initialize Terraform
-cd infra/docker  # or infra/serverless
+# Re-initialize Terraform (infra/serverless is the maintained stack;
+# see infra/README.md for the status of every stack)
+cd infra/serverless
 rm -rf .terraform terraform.tfstate*
 terraform init
 
@@ -1794,7 +1797,7 @@ terraform plan
 # (e.g., VPC limit, ECS service limit)
 ```
 
-**ECS Task Failures:**
+**ECS Task Failures** (deprecated stack — historical commands; the maintained AWS paths are `infra/serverless` and, once it lands, `infra/eks`):
 ```bash
 # Check CloudWatch logs
 aws logs tail /ecs/java-service --follow
@@ -1949,7 +1952,7 @@ FLASK_ENV=development  # Python
 services:
   java-service:
     environment:
-      - LOGGING_LEVEL_COM_DEMO=DEBUG
+      - LOGGING_LEVEL_COM_EXAMPLE_JAVA_SERVICE=DEBUG
       - SPRING_JPA_SHOW_SQL=true
 ```
 
@@ -1971,21 +1974,26 @@ If you encounter issues not covered here:
 
 ### Documentation Files
 
-- **README.md** - Main repository documentation (377 lines)
-- **JAVA-PATTERNS.md** - Java pattern implementations (16KB)
-- **NODE-PATTERNS.md** - Node.js pattern implementations (33KB)
-- **PYTHON-PATTERNS.md** - Python pattern implementations (55KB)
+- **README.md** - Main repository documentation
+- **ADDING_A_MICROSERVICE.md** - Step-by-step guide for adding a new service (start here when extending)
+- **JAVA-PATTERNS.md** - Java pattern implementations
+- **NODE-PATTERNS.md** - Node.js pattern implementations
+- **PYTHON-PATTERNS.md** - Python pattern implementations
+- **GO-PATTERNS.md** - Go pattern implementations (one file per pattern)
 - **SECURITY-FIXES.md** - Security improvements log
 - **CRITICAL-FIXES-COMPLETE.md** - Critical fixes completion report
-- **PATTERN-REVIEW-COMPLETE.md** - Pattern implementation review
+- **PATTERN-REVIEW-COMPLETE.md** - Pattern implementation review (canonical 32-pattern list)
+- **infra/README.md** - Which infrastructure stack is maintained, deprecated, or planned
 
 ### Scripts
 
 - **run.sh / run.bat** - Multi-environment launcher (Docker, local, AWS, Lambda)
 - **create_stack.sh** - Automated stack creation
 - **destroy_stack.sh** - Automated stack teardown
+- **scripts/build-lambda-zips.sh** - Builds the `infra/serverless/artifacts/*.zip` Lambdas
 - **validate-security.sh** - Security validation script
-- **pattern-gap-analysis.sh** - Pattern coverage analysis
+- **pattern-gap-analysis.sh** - Pattern coverage analysis (must stay PASS)
+- **.github/workflows/ci.yml** - CI: builds every service family, runs tests, validates compose + terraform
 
 ### External References
 
@@ -2003,14 +2011,14 @@ If you encounter issues not covered here:
 
 ### Key Takeaways
 
-1. **Polyglot Architecture**: Work with Java, Node.js, and Python services that implement the same patterns
-2. **Pattern-Driven**: 42+ microservices patterns organized in 10 categories
+1. **Polyglot Architecture**: Work with Java, Node.js, Python, and Go services that implement the same patterns
+2. **Pattern-Driven**: 32 canonical microservices patterns organized in 10 categories (PATTERN-REVIEW-COMPLETE.md is authoritative)
 3. **Environment-Based Config**: ALWAYS use environment variables, never hardcode
 4. **Comprehensive Documentation**: Reference `*-PATTERNS.md` files for detailed pattern information
-5. **Multiple Deployment Options**: Docker Compose, local dev, AWS ECS, AWS Lambda
+5. **Multiple Deployment Options**: Docker Compose, local dev, AWS Lambda (maintained), AWS EKS (planned); the ECS stack is deprecated
 6. **Security First**: Input validation, parameterized queries, rate limiting, JWT
 7. **Consistent Structure**: Similar API endpoints, pattern organization across all services
-8. **Test Coverage**: Unit and integration tests for all major functionality
+8. **Test Coverage**: Seed contract tests per service plus CI running every family's build and tests (see Testing Strategy)
 9. **Service Discovery**: Eureka-based registration and discovery
 10. **Production-Ready**: Health checks, metrics, distributed tracing, structured logging
 
@@ -2042,7 +2050,8 @@ If you encounter issues not covered here:
 # Run tests
 ./mvnw test              # Java
 npm test                 # Node
-python -m pytest         # Python
+python -m pytest tests/ -q   # Python
+go build ./...           # Go (build is the smoke test)
 
 # View logs
 docker-compose logs -f [service-name]
@@ -2052,6 +2061,7 @@ curl http://localhost:8761  # Eureka dashboard
 curl http://localhost:8080/actuator/health  # Java
 curl http://localhost:3000/health           # Node
 curl http://localhost:5001/health           # Python
+curl http://localhost:5002/health           # Go
 
 # Security validation
 ./validate-security.sh
@@ -2061,4 +2071,4 @@ curl http://localhost:5001/health           # Python
 
 **This guide is maintained to help AI assistants work effectively with this codebase. Always refer to this document when working on the demo-microservices repository.**
 
-*Last updated: 2025-11-13*
+*Last updated: 2026-11-01*

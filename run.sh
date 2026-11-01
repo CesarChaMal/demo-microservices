@@ -13,8 +13,8 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Default versions
-JAVA_VERSION="21"
-NODE_VERSION="20"
+JAVA_VERSION="22"
+NODE_VERSION="22"
 PYTHON_VERSION="3.11"
 
 print_usage() {
@@ -159,14 +159,16 @@ run_local_stack() {
 }
 
 deploy_aws_stack() {
-    echo -e "${GREEN}Deploying to AWS...${NC}"
-    cd infra
-    terraform init
-    terraform plan
-    terraform apply -auto-approve
+    echo -e "${RED}The legacy 'aws' stack (infra/ root Terraform) is DEPRECATED and does not plan cleanly.${NC}"
+    echo -e "${YELLOW}Maintained AWS paths: './run.sh lambda' (infra/serverless) today; infra/eks when it lands.${NC}"
+    echo -e "${YELLOW}See infra/README.md for the status of every stack.${NC}"
+    exit 1
 }
 
 deploy_lambda_stack() {
+    echo -e "${GREEN}Building Lambda zip artifacts...${NC}"
+    bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/scripts/build-lambda-zips.sh"
+
     echo -e "${GREEN}Deploying Lambda functions...${NC}"
     cd infra/serverless
     terraform init

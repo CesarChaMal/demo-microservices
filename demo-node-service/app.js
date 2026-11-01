@@ -16,6 +16,7 @@ const { materializedViewService } = require('./patterns/caching/materializedView
 const { CacheWarmingService, CacheInvalidationService } = require('./patterns/caching/cacheWarming');
 const { EventStreamProcessor, MessageQueue, OutboxPattern } = require('./patterns/messaging/eventStreaming');
 const { InboxPattern, TwoPhaseCommit, TwoPhaseCommitParticipant } = require('./patterns/messaging/inboxPattern');
+const { MessageProducer, messageProducer } = require('./patterns/messaging/messageProducer');
 const { DistributedLock, IdempotencyService, TransactionManager } = require('./patterns/transaction/distributedLock');
 const { HealthCheckService, MetricsCollector, CircuitBreakerHealthIndicator, DatabaseHealthIndicator, ExternalServiceHealthIndicator, CacheHealthIndicator } = require('./patterns/monitoring/healthCheck');
 const { TokenBucketRateLimiter, SlidingWindowRateLimiter, AdaptiveRateLimiter, RateLimitMiddleware, createAPIRateLimit } = require('./patterns/security/rateLimiting');
@@ -591,6 +592,25 @@ app.post('/inbox/message', async (req, res) => {
         res.json({ messageId, processed: success, pattern: 'inbox-pattern', stats: inboxPattern.getStats() });
     } catch (error) {
         res.status(500).json({ error: error.message, pattern: 'inbox-pattern' });
+    }
+});
+
+app.post('/messaging/produce', async (req, res) => {
+    try {
+        const { topic = 'orders', key = require('uuid').v4(), payload = { event: 'order.created' } } = req.body;
+
+        const buffered = messageProducer.publish(topic, key, payload);
+
+        res.json({
+            topic,
+            key,
+            buffered,
+            dropped: !buffered,
+            stats: messageProducer.getStats(),
+            pattern: 'message-producer'
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message, pattern: 'message-producer' });
     }
 });
 

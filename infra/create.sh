@@ -38,6 +38,14 @@ if [[ ! -d "$INFRA_ROOT" ]]; then
 fi
 
 # -------------------------
+# Build Lambda zip artifacts (serverless only)
+# -------------------------
+if [[ "$MODE" == "serverless" ]]; then
+  REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  bash "$REPO_ROOT/scripts/build-lambda-zips.sh"
+fi
+
+# -------------------------
 # Ensure state bucket
 # -------------------------
 echo "Ensuring S3 bucket for Terraform state: s3://$BACKEND_BUCKET"
@@ -65,14 +73,6 @@ if [[ -f package.json ]]; then
     rm -rf dist/ || true
     npm run export
   fi
-fi
-
-# -------------------------
-# Lambda artifacts (serverless mode)
-# -------------------------
-if [[ "$MODE" == "serverless" ]]; then
-  echo "Building Lambda deployment zips (scripts/build-lambda-zips.sh)..."
-  bash scripts/build-lambda-zips.sh
 fi
 
 # -------------------------

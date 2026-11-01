@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "test": "jest"
+    "test": "node --test tests/"
   },
   "keywords": [],
   "author": "",

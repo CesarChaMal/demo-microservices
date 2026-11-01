@@ -4,8 +4,8 @@ setlocal enabledelayedexpansion
 REM Demo Microservices Launcher Script for Windows
 REM Supports multiple deployment stacks with version management
 
-set "JAVA_VERSION=21"
-set "NODE_VERSION=20"
+set "JAVA_VERSION=22"
+set "NODE_VERSION=22"
 set "PYTHON_VERSION=3.11"
 set "STACK="
 
@@ -239,15 +239,19 @@ pause
 goto :eof
 
 :deploy_aws_stack
-echo Deploying to AWS...
-cd infra
-terraform init
-terraform plan
-terraform apply -auto-approve
-cd ..
-goto :eof
+echo [ERROR] The legacy 'aws' stack (infra\ root Terraform) is DEPRECATED and does not plan cleanly.
+echo Maintained AWS paths: 'run.bat lambda' (infra\serverless) today; infra\eks when it lands.
+echo See infra\README.md for the status of every stack.
+exit /b 1
 
 :deploy_lambda_stack
+where bash >nul 2>nul
+if %errorlevel%==0 (
+    echo Building Lambda zip artifacts...
+    bash scripts\build-lambda-zips.sh
+) else (
+    echo [WARN] bash not found - skipping zip build; run scripts\build-lambda-zips.sh manually
+)
 echo Deploying Lambda functions...
 cd infra\serverless
 terraform init

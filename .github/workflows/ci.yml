@@ -1,0 +1,177 @@
+# CI for demo-microservices
+#
+# Builds and tests every service family, lints shell scripts, validates the
+# maintained Terraform stack, and runs the repo's own validation scripts.
+#
+# Terraform scope: infra/serverless ONLY. The legacy root stack and
+# infra/docker are deprecated/quarantined — see infra/README.md — and must
+# not be added to this job. infra/eks joins when it lands.
+#
+# Note: local JDK is 11 but every pom targets Java 22 — the java jobs only
+# run here, not on the WSL dev box. demo-lambda-java-service has a pom but
+# no Maven wrapper and is built by scripts/build-lambda-zips.sh instead.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shell-scripts:
+    name: Shell scripts (bash -n)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax-check every shell script
+        run: |
+          status=0
+          while IFS= read -r -d '' f; do
+            echo "bash -n $f"
+            bash -n "$f" || status=1
+          done < <(find . -type f -name '*.sh' \
+                     -not -path './.git/*' \
+                     -not -path '*/node_modules/*' \
+                     -not -path '*/venv/*' -print0)
+          exit $status
+
+  java:
+    name: Java — ${{ matrix.dir }} (${{ matrix.goal }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - dir: demo-java-service
+            goal: test
+          - dir: demo-eureka-server
+            goal: test
+          - dir: demo-simple-java-service
+            goal: package -DskipTests
+          - dir: demo-simple-eureka-server
+            goal: package -DskipTests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '22'
+          cache: maven
+      - name: Build
+        working-directory: ${{ matrix.dir }}
+        run: ./mvnw -B -ntp ${{ matrix.goal }}
+
+  node:
+    name: Node.js
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: demo-node-service — install, syntax-check, test
+        working-directory: demo-node-service
+        run: |
+          npm ci
+          node --check app.js
+          node --test tests/
+      - name: Syntax-check simple + lambda entrypoints
+        run: |
+          node --check demo-simple-node-service/app.js
+          node --check demo-lambda-node-service/handler.js
+          find demo-node-service/patterns demo-simple-node-service \
+               -name '*.js' -not -path '*/node_modules/*' -print0 \
+            | xargs -0 -n1 node --check
+
+  python:
+    name: Python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r demo-python-service/requirements.txt pytest
+      - name: Compile all Python sources
+        run: |
+          python -m compileall -q \
+            demo-python-service/app.py \
+            demo-python-service/patterns \
+            demo-simple-python-service \
+            demo-lambda-python-service
+      - name: demo-python-service — tests
+        working-directory: demo-python-service
+        run: python -m pytest tests/ -q
+
+  go:
+    name: Go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      # go.sum is deliberately not committed (see demo-go-service/go.mod), so
+      # tidy resolves dependencies in CI before building.
+      - name: Build all Go modules
+        run: |
+          for mod in demo-go-service demo-simple-go-service; do
+            echo "== $mod =="
+            (cd "$mod" && go mod tidy && go build ./...)
+          done
+
+  terraform:
+    name: Terraform — infra/serverless
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - name: fmt -check
+        run: terraform -chdir=infra/serverless fmt -check -recursive
+      - name: init + validate
+        run: |
+          terraform -chdir=infra/serverless init -backend=false -input=false
+          terraform -chdir=infra/serverless validate
+
+  compose:
+    name: Docker Compose config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate compose file
+        run: docker compose config -q
+
+  validation-scripts:
+    name: Repo validation scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: validate-security.sh
+        run: bash validate-security.sh
+      - name: pattern-gap-analysis.sh
+        run: bash pattern-gap-analysis.sh
+
+  docker-build:
+    name: docker build — ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - demo-eureka-server
+          - demo-java-service
+          - demo-node-service
+          - demo-python-service
+          - demo-go-service
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image (build only — ECR push lands with infra/eks)
+        run: docker build -t ${{ matrix.service }}:ci ${{ matrix.service }}

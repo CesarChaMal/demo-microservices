@@ -80,9 +80,9 @@ narrative breaks.
 | Mode | Command | Status |
 |---|---|---|
 | Docker Compose | `./run.sh docker` | ✅ primary; fully working |
-| Local processes | `./run.sh local` | ✅ working (needs JDK 21/11, Node 20/18, Python 3.11/3.13 + Docker for MySQL) |
-| AWS legacy stack | `./run.sh aws` | ❌ broken (root `infra/` Terraform is quarantined; EKS path replaces it) |
-| AWS Lambda | `./run.sh lambda` | ⚠️ see Step 8 — handler strings must match the code files |
+| Local processes | `./run.sh local` | ✅ working (needs JDK 22/11, Node 22/18, Python 3.11/3.13 + Docker for MySQL) |
+| AWS legacy stack | `./run.sh aws` | ❌ deprecated — fails fast with a pointer (root `infra/` Terraform is quarantined; EKS path replaces it) |
+| AWS Lambda | `./run.sh lambda` | ⚠️ see Step 8 — handler strings must match the code files; zips are built automatically first |
 
 ---
 
@@ -403,12 +403,14 @@ small-scale compute option; the primary AWS path is EKS (`infra/eks/`, planned �
 
   Written as `## <n>. <Name>` headings in this order, files under `patterns/<category>/` using
   the ten categories: resilience, caching, messaging, transaction, architectural, integration,
-  deployment, performance, monitoring, security. `pattern-gap-analysis.sh` diffs against this
-  list (the script is being realigned to it — until then, diff manually).
+  deployment, performance, monitoring, security. `pattern-gap-analysis.sh` diffs the
+  implementation files against this list — run it, it must exit 0 (32/32 per language).
 
-  Pattern-exposure convention (full family): index at `GET /api/patterns`, one route per
-  pattern at `GET /api/patterns/<kebab-name>` — see `demo-go-service/main.go`
-  (`"GET /api/patterns/{kebab-name}"`).
+  Pattern-exposure convention: **java and Go** expose a per-pattern route under
+  `/api/patterns/<name>` — Go as `GET` routes in `demo-go-service/main.go`, java as `POST`
+  routes in `PatternsController.java`. **Node and Python** expose the same patterns under
+  idiomatic semantic paths instead (`POST /inbox/message`, `POST /cache/warm`,
+  `POST /messaging/produce`, …) — either convention satisfies this step.
 
 ### Step 10 — Verify
 
