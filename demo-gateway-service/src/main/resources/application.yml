@@ -31,6 +31,12 @@ spring:
             - Path=/go/**
           filters:
             - StripPrefix=1
+        - id: dotnet-service
+          uri: lb://DOTNET-SERVICE
+          predicates:
+            - Path=/dotnet/**
+          filters:
+            - StripPrefix=1
 
 eureka:
   client:

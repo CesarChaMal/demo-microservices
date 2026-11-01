@@ -128,6 +128,20 @@ jobs:
             (cd "$mod" && go mod tidy && go build ./...)
           done
 
+  dotnet:
+    name: .NET
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      # Build is the smoke test (no test project yet). Restore runs inside the
+      # build and is the real verifier for the Steeltoe package pin.
+      - name: Build demo-dotnet-service
+        working-directory: demo-dotnet-service
+        run: dotnet build
+
   terraform:
     name: Terraform — infra/serverless
     runs-on: ubuntu-latest
@@ -174,6 +188,7 @@ jobs:
           - demo-node-service
           - demo-python-service
           - demo-go-service
+          - demo-dotnet-service
     steps:
       - uses: actions/checkout@v4
       - name: Build image (build only — ECR push lands with infra/eks)

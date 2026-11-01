@@ -16,6 +16,7 @@
 |---|---|---|---|
 | **Full** | `demo-<lang>-service` | The full contract + all 32 design patterns + Eureka registration + peer wiring | `demo-java-service`, `demo-node-service`, `demo-python-service`, `demo-go-service` |
 | **Simple** | `demo-simple-<lang>-service` | Contract only (`/info`, `/process`) + Eureka registration — the minimal "hello world" tier | `demo-simple-java-service`, `demo-simple-node-service`, `demo-simple-python-service`, `demo-simple-go-service` |
+| **Contract-first** | `demo-<lang>-service` | The contract (`/info`, `/process`, `/health`) + Eureka registration via a **real client** — no pattern catalog yet; the seed tier a new language starts from before growing to Full | `demo-dotnet-service` |
 | **Lambda** | `demo-lambda-<lang>-service` | Handler-only packaging for AWS Lambda, deployed via `infra/serverless` | `demo-lambda-java-service`, `demo-lambda-node-service`, `demo-lambda-python-service` |
 
 `demo-eureka-server` is the Netflix Eureka discovery server everything registers with
@@ -38,7 +39,7 @@ checklist, no Step 7 peer wiring — adding a service behind it is one route blo
 | 3306 | MySQL (`mysql:8.0`) | in use |
 | 8081 | `demo-gateway-service` (API gateway) | in use |
 | 5002 | `demo-go-service` | in use |
-| 5003 | `demo-dotnet-service` | reserved |
+| 5003 | `demo-dotnet-service` | in use |
 | 6379 | Redis (`redis:7-alpine`) | in use |
 | 5672 / 15672 | RabbitMQ (`rabbitmq:3.13-management`, amqp / management UI) | in use |
 
@@ -65,8 +66,9 @@ narrative breaks.
 ### Who talks to whom (as built today)
 
 - **Java** discovers peers via **Eureka + Spring Cloud OpenFeign**
-  (`demo-java-service/.../client/NodeServiceClient.java`, `GoServiceClient.java`), wrapped in
-  resilience4j `@CircuitBreaker` / `@Retry`, invoked from `EnterpriseController`.
+  (`demo-java-service/.../client/NodeServiceClient.java`, `GoServiceClient.java`,
+  `DotNetServiceClient.java`), wrapped in resilience4j `@CircuitBreaker` / `@Retry`, invoked
+  from `EnterpriseController`.
 - **Node and Python call peers by Docker Compose hostname directly**
   (`http://java-service:8080`, `http://python-service:5001`, `http://go-service:5002`) — Node
   via the registry in `demo-node-service/patterns/integration/apiGateway.js`, Python via

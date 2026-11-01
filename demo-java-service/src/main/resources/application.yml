@@ -37,6 +37,11 @@ resilience4j:
         wait-duration-in-open-state: 20s
         sliding-window-size: 8
         minimum-number-of-calls: 3
+      dotnet-service:
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 20s
+        sliding-window-size: 8
+        minimum-number-of-calls: 3
   retry:
     instances:
       python-service:
@@ -46,6 +51,9 @@ resilience4j:
         max-attempts: 2
         wait-duration: 500ms
       go-service:
+        max-attempts: 2
+        wait-duration: 500ms
+      dotnet-service:
         max-attempts: 2
         wait-duration: 500ms
   bulkhead:
@@ -59,11 +67,16 @@ resilience4j:
       go-service:
         max-concurrent-calls: 5
         max-wait-duration: 1s
+      dotnet-service:
+        max-concurrent-calls: 5
+        max-wait-duration: 1s
   timelimiter:
     instances:
       node-service:
         timeout-duration: 5s
       go-service:
+        timeout-duration: 5s
+      dotnet-service:
         timeout-duration: 5s
 
 # OpenFeign Configuration
@@ -81,6 +94,9 @@ feign:
         connectTimeout: 2000
         readTimeout: 5000
       go-service:
+        connectTimeout: 2000
+        readTimeout: 5000
+      dotnet-service:
         connectTimeout: 2000
         readTimeout: 5000
 

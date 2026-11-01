@@ -1,0 +1,4 @@
+# .NET build artifacts (IDE builds on the Windows side land here; keep them
+# out of the repo the same way node_modules/venv dirs are ignored elsewhere).
+bin/
+obj/

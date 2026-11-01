@@ -121,9 +121,33 @@ services:
     networks:
       - micro_net
 
+  # Contract-first .NET 8 member (guide Step 4a): registers with Eureka via
+  # the real Steeltoe client — the deliberate contrast with go-service's
+  # hand-rolled REST registration (Step 4b). Eureka-only dependency.
+  dotnet-service:
+    build: ./demo-dotnet-service
+    container_name: dotnet-service
+    ports:
+      - "5003:5003"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    environment:
+      - EUREKA_SERVER_URL=${EUREKA_SERVER_URL}
+      - SERVICE_HOSTNAME=dotnet-service
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5003/health | grep '\"status\":\"UP\"' >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - micro_net
+
   # API gateway (Spring Cloud Gateway). Single entry point: routes
-  # /java/**, /node/**, /python/**, /go/** to lb://<APPID> through Eureka
-  # (StripPrefix=1). Infrastructure like eureka-server, not a 32-pattern peer.
+  # /java/**, /node/**, /python/**, /go/**, /dotnet/** to lb://<APPID> through
+  # Eureka (StripPrefix=1). Infrastructure like eureka-server, not a 32-pattern peer.
   gateway-service:
     build: ./demo-gateway-service
     container_name: gateway-service

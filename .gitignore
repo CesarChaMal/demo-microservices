@@ -47,8 +47,10 @@ speed-measure-plugin*.json
 *.suo
 *.db
 *.user
-*.csproj
 *.sdf
+# NOTE: *.csproj was removed — it is project source, not an IDE artifact
+# (old Visual Studio templates wrongly list it). demo-dotnet-service must
+# commit its .csproj or CI checkout + dotnet build fails.
 .ipr
 .iws
 .c9/
