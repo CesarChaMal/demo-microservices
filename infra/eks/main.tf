@@ -111,3 +111,29 @@ module "eks" {
 
   tags = local.tags
 }
+
+# CI access: .github/workflows/deploy.yml authenticates as the
+# github-actions-demo-microservices-deploy IAM role (GitHub OIDC; the role,
+# its trust policy and its ECR/EKS inline policy live in IAM, outside this
+# stack — see infra/README.md). enable_cluster_creator_admin_permissions only
+# admits whoever ran create_stack.sh locally, so without the entry below
+# kubectl from CI gets 403 even though DescribeCluster succeeds.
+data "aws_caller_identity" "current" {}
+
+resource "aws_eks_access_entry" "github_actions_deploy" {
+  cluster_name  = module.eks.cluster_name
+  principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/github-actions-demo-microservices-deploy"
+  username      = "github-actions"
+
+  tags = local.tags
+}
+
+resource "aws_eks_access_policy_association" "github_actions_deploy" {
+  cluster_name  = module.eks.cluster_name
+  principal_arn = aws_eks_access_entry.github_actions_deploy.principal_arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+}
