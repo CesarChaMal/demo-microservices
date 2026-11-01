@@ -1,0 +1,31 @@
+# Shared configuration for the demo services — the k8s mirror of .env.
+#
+# ⚠️ DEMO VALUES ONLY. The Secret below ships a placeholder JWT secret in
+# plain stringData (base64-in-plaintext). For anything beyond a disposable
+# demo: delete the Secret, create it out-of-band (kubectl create secret /
+# External Secrets / Sealed Secrets) and keep it out of git.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-config
+  namespace: demo-microservices
+data:
+  # Same value the compose services get from .env — the in-code Eureka
+  # defaults resolve identically because the k8s Service names match the
+  # compose service names (http://eureka-server:8761/eureka/).
+  EUREKA_SERVER_URL: "http://eureka-server:8761/eureka/"
+  METRICS_ENABLED: "true"
+  RATE_LIMIT_REQUESTS_PER_MINUTE: "100"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: demo-secrets
+  namespace: demo-microservices
+  annotations:
+    demo-warning: "placeholder value committed on purpose — replace before any real use"
+type: Opaque
+stringData:
+  JWT_SECRET: "your-super-secure-jwt-secret-key-change-in-production"

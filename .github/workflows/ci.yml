@@ -3,9 +3,9 @@
 # Builds and tests every service family, lints shell scripts, validates the
 # maintained Terraform stack, and runs the repo's own validation scripts.
 #
-# Terraform scope: infra/serverless ONLY. The legacy root stack and
-# infra/docker are deprecated/quarantined — see infra/README.md — and must
-# not be added to this job. infra/eks joins when it lands.
+# Terraform scope: the maintained stacks ONLY (infra/serverless, infra/eks).
+# The legacy root stack and infra/docker are deprecated/quarantined — see
+# infra/README.md — and must not be added to this job.
 #
 # Note: local JDK is 11 but every pom targets Java 22 — the java jobs only
 # run here, not on the WSL dev box. demo-lambda-java-service has a pom but
@@ -143,19 +143,57 @@ jobs:
         run: dotnet build
 
   terraform:
-    name: Terraform — infra/serverless
+    name: Terraform — ${{ matrix.stack }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: [infra/serverless, infra/eks]
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
       - name: fmt -check
-        run: terraform -chdir=infra/serverless fmt -check -recursive
+        run: terraform -chdir=${{ matrix.stack }} fmt -check -recursive
+      # infra/eks declares `backend "s3" {}` with no config — inert under
+      # -backend=false, so validate needs no cluster or AWS credentials.
       - name: init + validate
         run: |
-          terraform -chdir=infra/serverless init -backend=false -input=false
-          terraform -chdir=infra/serverless validate
+          terraform -chdir=${{ matrix.stack }} init -backend=false -input=false
+          terraform -chdir=${{ matrix.stack }} validate
+
+  k8s-manifests:
+    name: k8s manifests — render + YAML parse
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install envsubst + PyYAML
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y --no-install-recommends gettext-base
+          pip install pyyaml
+      - name: Render with dummy values and parse every object
+        run: |
+          AWS_ACCOUNT_ID=000000000000 AWS_REGION=us-east-1 TAG=ci ./scripts/render-k8s.sh > /tmp/rendered.yaml
+          python - <<'EOF'
+          import yaml
+
+          text = open("/tmp/rendered.yaml").read()
+          assert "${" not in text, "unsubstituted ${...} placeholder left in rendered output"
+
+          docs = [d for d in yaml.safe_load_all(text) if d]
+          kinds = {}
+          for d in docs:
+              assert isinstance(d, dict) and d.get("kind"), f"object without kind: {d!r}"
+              assert d.get("metadata", {}).get("name"), f"object without metadata.name: {d['kind']}"
+              kinds[d["kind"]] = kinds.get(d["kind"], 0) + 1
+
+          print(f"parsed {len(docs)} objects: {kinds}")
+          assert kinds.get("Namespace") == 1
+          assert kinds.get("ConfigMap") == 1 and kinds.get("Secret") == 1
+          assert kinds.get("Deployment") == 7 and kinds.get("Service") == 7
+          assert kinds.get("HorizontalPodAutoscaler") == 5
+          EOF
 
   compose:
     name: Docker Compose config
@@ -191,5 +229,5 @@ jobs:
           - demo-dotnet-service
     steps:
       - uses: actions/checkout@v4
-      - name: Build image (build only — ECR push lands with infra/eks)
+      - name: Build image (build only — deploy.yml pushes to ECR)
         run: docker build -t ${{ matrix.service }}:ci ${{ matrix.service }}

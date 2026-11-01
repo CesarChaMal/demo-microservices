@@ -1,0 +1,104 @@
+# Python Service (Flask). REDIS_URL unset → cache patterns degrade.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python-service
+  namespace: demo-microservices
+  labels:
+    app: python-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: python-service
+  template:
+    metadata:
+      labels:
+        app: python-service
+    spec:
+      containers:
+        - name: python-service
+          image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/demo-python-service:${TAG}
+          ports:
+            - containerPort: 5001
+          env:
+            - name: FLASK_ENV
+              value: "production"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: demo-secrets
+                  key: JWT_SECRET
+            - name: METRICS_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: demo-config
+                  key: METRICS_ENABLED
+            - name: RATE_LIMIT_REQUESTS_PER_MINUTE
+              valueFrom:
+                configMapKeyRef:
+                  name: demo-config
+                  key: RATE_LIMIT_REQUESTS_PER_MINUTE
+          resources:
+            requests:
+              cpu: "250m"
+              memory: 512Mi
+            limits:
+              cpu: "250m"
+              memory: 512Mi
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 6
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: python-service
+  namespace: demo-microservices
+  labels:
+    app: python-service
+spec:
+  type: ClusterIP
+  selector:
+    app: python-service
+  ports:
+    - name: http
+      port: 5001
+      targetPort: 5001
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: python-service
+  namespace: demo-microservices
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: python-service
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

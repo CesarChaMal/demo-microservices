@@ -27,7 +27,7 @@ This is a **comprehensive microservices architecture demonstration** featuring:
 - **Architecture**: Polyglot microservices with service discovery, multiple deployment strategies, and cloud-native patterns
 - **Scale**: 14 services (5 full-featured + 5 simplified + 3 serverless + 1 contract-first .NET) + 2 Eureka servers + 1 API gateway, 32 canonical microservices patterns
 - **Languages**: Java, Node.js, Python, Go, C#
-- **Deployment**: Docker Compose, Local Development, AWS Lambda (maintained), AWS EKS (planned)
+- **Deployment**: Docker Compose, Local Development, AWS EKS (maintained — primary), AWS Lambda (maintained)
 
 ### Core Services
 
@@ -80,7 +80,8 @@ demo-microservices/
 ├── CRITICAL-FIXES-COMPLETE.md     # Critical fixes report
 ├── PATTERN-REVIEW-COMPLETE.md     # Pattern review (canonical 32-pattern list)
 ├── LICENSE                        # MIT license
-├── .github/workflows/ci.yml       # CI: build/test all families + infra/script validation
+├── .github/workflows/ci.yml       # CI: build/test all families + terraform/k8s validation
+├── .github/workflows/deploy.yml   # EKS deploy: build+push images to ECR, apply manifests
 │
 ├── demo-eureka-server/            # Service Discovery
 │   ├── src/main/java/             # Java source code
@@ -156,6 +157,9 @@ demo-microservices/
 │   ├── README.md                  # Stack status — maintained vs deprecated (read first)
 │   ├── serverless/                # Lambda + API Gateway (MAINTAINED)
 │   │   └── lambda_api.tf
+│   ├── eks/                       # EKS (Fargate) + ECR (MAINTAINED — primary AWS path)
+│   │   ├── k8s/                   # k8s manifests (rendered by scripts/render-k8s.sh)
+│   │   └── *.tf                   # cluster, VPC, one ECR repo per service
 │   ├── docker/                    # ECS deployment configuration (DEPRECATED — broken)
 │   │   └── ecs_stack.tf
 │   ├── modules/
@@ -172,6 +176,7 @@ demo-microservices/
 ├── create_stack.sh                # Stack creation automation
 ├── destroy_stack.sh               # Stack teardown automation
 ├── scripts/build-lambda-zips.sh   # Builds infra/serverless/artifacts/*.zip
+├── scripts/render-k8s.sh          # Renders infra/eks/k8s/*.yaml with account/region/tag
 ├── validate-security.sh           # Security validation script
 └── pattern-gap-analysis.sh        # Pattern coverage analysis (must stay PASS)
 ```
@@ -219,7 +224,7 @@ All full-featured services organize patterns into **10 categories**:
 |----------|------------|---------|
 | **Service Discovery** | Netflix Eureka | Service registration and discovery |
 | **Containerization** | Docker, Docker Compose | Local development and deployment |
-| **Cloud Platform** | AWS | ECS, Lambda, RDS, S3, API Gateway |
+| **Cloud Platform** | AWS | EKS/Fargate (primary), ECR, Lambda, API Gateway, S3 — ECS deprecated |
 | **Infrastructure as Code** | Terraform | Modular AWS resource management |
 | **Database** | MySQL 8.0 | Persistent storage with encryption |
 | **API Documentation** | Swagger/OpenAPI 3.0 | Interactive API documentation |
@@ -301,8 +306,9 @@ All full-featured services organize patterns into **10 categories**:
 3. **Choose Development Mode**
    - **Docker (Recommended)**: `./run.sh docker`
    - **Local Development**: `./run.sh local`
-   - **AWS Cloud**: `./run.sh aws`
-   - **Serverless Only**: `./run.sh lambda`
+   - **AWS EKS (primary)**: `MODE=eks ./create_stack.sh` (+ `.github/workflows/deploy.yml` on push)
+   - **AWS Lambda**: `./run.sh lambda`
+   - (`./run.sh aws` legacy ECS — deprecated, fails fast with a pointer)
 
 ### Docker Development Workflow
 
@@ -665,8 +671,8 @@ docker-compose down -v  # Remove containers and volumes
 
 > **Deprecated — quarantined.** The `infra/docker` ECS stack is broken
 > (invalid HCL, undeclared variables) and is excluded from CI. Do not extend
-> it. The maintained AWS paths are Lambda (`infra/serverless`) today and EKS
-> (`infra/eks`, planned) as the primary container target. See `infra/README.md`
+> it. The maintained AWS paths are EKS (`infra/eks` — the primary container
+> target) and Lambda (`infra/serverless`). See `infra/README.md`
 > for the full stack-status table.
 
 **Historical command** (no longer expected to work):
@@ -718,16 +724,46 @@ aws logs tail /aws/lambda/demo-node-lambda --follow
 - **Memory**: 128MB to 10GB (affects CPU allocation)
 - **Pricing**: Pay per invocation and duration
 
+### 5. AWS EKS Deployment (Fargate) — primary
+
+**Use Case**: Long-running services, autoscaling, the default production answer
+
+**Command:**
+```bash
+AWS_REGION=eu-west-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=eks ./create_stack.sh
+```
+
+**Infrastructure Created (`infra/eks/`):**
+- **EKS cluster**: Fargate-only (`core` + `apps` profiles) — no nodes to manage
+- **VPC**: 2 AZ, private/public subnets, single NAT gateway
+- **ECR**: one immutable repo per service (`demo-<svc>`), scan-on-push, keep-last-10 lifecycle
+- **k8s objects** (`infra/eks/k8s/`, rendered by `scripts/render-k8s.sh`): namespace
+  `demo-microservices`, shared ConfigMap + Secret, a Deployment+Service per service
+  (k8s Service names == compose service names, so in-code Eureka defaults resolve
+  identically), HPA (CPU 70%, 1–4 replicas) on the 5 API services, gateway as the
+  only LoadBalancer (NLB) — the single entry point
+
+**CI/CD**: push to main → `.github/workflows/deploy.yml` builds + pushes all 7
+images (`sha-<short>` + `latest`) and applies the rendered manifests.
+
+**Notes:**
+- Honest degradation in-cluster: java → H2, node/python → cache degrade,
+  go → in-process buffer (mysql/redis/rabbitmq have no k8s manifests — by design)
+- Destroy order matters: delete k8s resources first (releases the NLB inside the
+  cluster) before `destroy_stack.sh` tears down the VPC — see `infra/eks/README.md`
+- **Cost warning**: an always-on Fargate cluster + NAT + NLB costs real money —
+  run `destroy_stack.sh` when done demoing
+
 ### Deployment Comparison
 
-| Aspect | Docker Compose | Local Dev | AWS ECS (deprecated) | AWS Lambda |
-|--------|----------------|-----------|----------------------|------------|
-| **Cost** | Free (local) | Free (local) | $$ (always running) | $ (pay per use) |
-| **Startup** | 30-60 seconds | 15-30 seconds | 2-3 minutes | <1 second (warm) |
-| **Scaling** | Manual | Manual | Auto-scaling | Automatic |
-| **Monitoring** | Docker logs | Console logs | CloudWatch | CloudWatch |
-| **Best For** | Development | Active coding | Production 24/7 | Event-driven |
-| **Complexity** | Low | Low | Medium | Medium |
+| Aspect | Docker Compose | Local Dev | AWS EKS (primary) | AWS ECS (deprecated) | AWS Lambda |
+|--------|----------------|-----------|--------------------|----------------------|------------|
+| **Cost** | Free (local) | Free (local) | $$$ (always on) | $$ (always running) | $ (pay per use) |
+| **Startup** | 30-60 seconds | 15-30 seconds | ~10 min cluster / secs per pod | 2-3 minutes | <1 second (warm) |
+| **Scaling** | Manual | Manual | HPA (CPU 70%, 1–4) | Auto-scaling | Automatic |
+| **Monitoring** | Docker logs | Console logs | CloudWatch | CloudWatch | CloudWatch |
+| **Best For** | Development | Active coding | Production 24/7 | — | Event-driven |
+| **Complexity** | Low | Low | Medium | Medium | Medium |
 
 ---
 
@@ -1291,8 +1327,9 @@ docker-compose up --scale node-service=3
 # Note: You'll need to configure load balancer
 ```
 
-**AWS ECS (deprecated):** the `infra/docker` stack is quarantined — scaling
-moves to EKS (HPA on the k8s Deployment) when `infra/eks` lands.
+**AWS EKS (primary)**: scale with the HPA on the k8s Deployment (CPU 70%,
+1–4 replicas — `infra/eks/k8s/*-service.yaml`). **AWS ECS (deprecated):** the
+`infra/docker` stack is quarantined — do not scale it.
 
 **AWS Lambda:**
 ```bash
@@ -1820,7 +1857,7 @@ terraform plan
 # (e.g., VPC limit, ECS service limit)
 ```
 
-**ECS Task Failures** (deprecated stack — historical commands; the maintained AWS paths are `infra/serverless` and, once it lands, `infra/eks`):
+**ECS Task Failures** (deprecated stack — historical commands; the maintained AWS paths are `infra/eks` and `infra/serverless`):
 ```bash
 # Check CloudWatch logs
 aws logs tail /ecs/java-service --follow
@@ -2011,9 +2048,11 @@ If you encounter issues not covered here:
 ### Scripts
 
 - **run.sh / run.bat** - Multi-environment launcher (Docker, local, AWS, Lambda)
-- **create_stack.sh** - Automated stack creation
+- **create_stack.sh** - Automated stack creation (`MODE=docker|serverless|eks`)
 - **destroy_stack.sh** - Automated stack teardown
 - **scripts/build-lambda-zips.sh** - Builds the `infra/serverless/artifacts/*.zip` Lambdas
+- **scripts/render-k8s.sh** - Renders `infra/eks/k8s/*.yaml` with account/region/tag
+- **.github/workflows/deploy.yml** - EKS deploy pipeline (build + push images, apply manifests)
 - **validate-security.sh** - Security validation script
 - **pattern-gap-analysis.sh** - Pattern coverage analysis (must stay PASS)
 - **.github/workflows/ci.yml** - CI: builds every service family, runs tests, validates compose + terraform
@@ -2038,7 +2077,7 @@ If you encounter issues not covered here:
 2. **Pattern-Driven**: 32 canonical microservices patterns organized in 10 categories (PATTERN-REVIEW-COMPLETE.md is authoritative)
 3. **Environment-Based Config**: ALWAYS use environment variables, never hardcode
 4. **Comprehensive Documentation**: Reference `*-PATTERNS.md` files for detailed pattern information
-5. **Multiple Deployment Options**: Docker Compose, local dev, AWS Lambda (maintained), AWS EKS (planned); the ECS stack is deprecated
+5. **Multiple Deployment Options**: Docker Compose, local dev, AWS EKS (maintained — primary), AWS Lambda (maintained); the ECS stack is deprecated
 6. **Security First**: Input validation, parameterized queries, rate limiting, JWT
 7. **Consistent Structure**: Similar API endpoints, pattern organization across all services
 8. **Test Coverage**: Seed contract tests per service plus CI running every family's build and tests (see Testing Strategy)
@@ -2067,8 +2106,11 @@ If you encounter issues not covered here:
 # Start for local development
 ./run.sh local
 
-# Deploy to AWS
-./run.sh aws
+# Deploy to AWS (EKS — primary)
+MODE=eks ./create_stack.sh   # then push to main → deploy.yml builds+applies
+
+# Deploy to AWS (Lambda)
+./run.sh lambda
 
 # Run tests
 ./mvnw test              # Java

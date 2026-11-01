@@ -89,8 +89,9 @@ narrative breaks.
 |---|---|---|
 | Docker Compose | `./run.sh docker` | ✅ primary; fully working |
 | Local processes | `./run.sh local` | ✅ working (needs JDK 22/11, Node 22/18, Python 3.11/3.13 + Docker for MySQL) |
-| AWS legacy stack | `./run.sh aws` | ❌ deprecated — fails fast with a pointer (root `infra/` Terraform is quarantined; EKS path replaces it) |
-| AWS Lambda | `./run.sh lambda` | ⚠️ see Step 8 — handler strings must match the code files; zips are built automatically first |
+| AWS legacy stack | `./run.sh aws` | ❌ deprecated — fails fast with a pointer (root `infra/` Terraform is quarantined; replaced by the EKS path) |
+| AWS EKS | `MODE=eks ./create_stack.sh` | ✅ primary AWS path — Fargate + one ECR repo per service; see Step 8b |
+| AWS Lambda | `./run.sh lambda` | ⚠️ see Step 8a — handler strings must match the code files; zips are built automatically first |
 
 ---
 
@@ -380,7 +381,9 @@ entry is a simulated stub that makes no real call.)
 
 **Simple/Lambda families:** skip this step — they don't participate in peer calls.
 
-### Step 8 — Optional: AWS Lambda variant
+### Step 8 — Optional: AWS variants (Lambda or EKS)
+
+#### 8a — Lambda (small-scale compute)
 
 `infra/serverless/lambda_api.tf` maps each lambda to a route. **The #1 Lambda failure in this
 repo's history: the Terraform `handler` string not matching the actual file/symbol.** The
@@ -399,8 +402,38 @@ Verify the string against the file before every `terraform apply` — and read t
 (`com/example/java_service/lambda/` ⇒ `package com.example.java_service.lambda;`). This repo
 historically shipped sources at `com/example/java_service/…` declaring `package com.example.lambda`
 — a layout/package mismatch that made the handler string silently wrong. Lambda is the
-small-scale compute option; the primary AWS path is EKS (`infra/eks/`, planned — see
-`infra/README.md`).
+small-scale compute option; the primary AWS path is EKS — 8b below (see `infra/README.md`
+for the compute-decision table).
+
+#### 8b — EKS (the primary AWS path)
+
+Every service that ships a Dockerfile runs on the Fargate cluster. A new service registers
+in **four** places (guard rule applies — all in the same commit):
+
+1. **ECR repo** — add `"demo-<svc>"` to `local.service_repos` in `infra/eks/main.tf`.
+   Terraform creates one immutable repo per entry; the comment there says to keep the list
+   in sync with `infra/eks/k8s/*.yaml` and the CI docker-build matrix.
+2. **k8s manifest** — copy the shape of `infra/eks/k8s/dotnet-service.yaml` (the seed
+   shape: Deployment + ClusterIP Service, image
+   `${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/demo-<svc>:${TAG}`). Keep the
+   k8s Service **name equal to the compose service name** — that is what makes the
+   in-code Eureka/peer defaults resolve identically in-cluster. The gateway stays the
+   only LoadBalancer; new services sit behind it as ClusterIP.
+   `scripts/render-k8s.sh` globs `infra/eks/k8s/*.yaml`, so a new manifest file is picked
+   up automatically — no script edit.
+3. **Deploy pipeline** — add `<svc>-service` to the `for SVC in eureka-server
+   gateway-service java-service …` loop in `.github/workflows/deploy.yml` (it builds and
+   pushes `sha-<short>` + `latest`, then applies the rendered manifests).
+4. **CI** — `.github/workflows/ci.yml`: add the dir to the docker-build matrix, and bump
+   the k8s-manifests job's kind assertions (`Deployment == 7`, `Service == 7`,
+   `HPA == 5` — a new manifest changes the counts; CI fails loudly if you forget, by
+   design). If the service should autoscale, copy the HPA block from
+   `java-service.yaml` (autoscaling/v2, CPU 70%, 1–4) and bump the HPA count too.
+
+mysql/redis/rabbitmq have **no** k8s manifests, by design — in-cluster the services degrade
+honestly (java→H2, node/python→cache degrade, go→in-process buffer). A new service that
+depends on them follows the same honest-degradation rule; document its fallback in its
+manifest's comments.
 
 ### Step 9 — Update the docs (registration points — guard rule applies)
 
@@ -443,7 +476,10 @@ curl http://localhost:5002/health && curl http://localhost:5002/metrics
 
 - Eureka console `http://localhost:8761` shows `GO-SERVICE` within ~30 s (heartbeat interval)
 - Peer round-trip: call the Java Feign route that targets your service → returns your `result`
-- Lambda variant: zip exists in `infra/serverless/artifacts/` and handler string matches (Step 8)
+- Lambda variant: zip exists in `infra/serverless/artifacts/` and handler string matches (Step 8a)
+- EKS variant: `AWS_ACCOUNT_ID=000000000000 AWS_REGION=us-east-1 TAG=test ./scripts/render-k8s.sh`
+  renders your manifest with no `${` placeholders left — CI's k8s-manifests job does exactly
+  this on every push (Step 8b)
 
 ### Step 11 — File checklist
 
@@ -458,6 +494,7 @@ curl http://localhost:5002/health && curl http://localhost:5002/metrics
 | 7 | `CLAUDE.md` + `README.md` tables | existing | ✅ all families |
 | 8 | `<LANG>-PATTERNS.md` (32 headings) | new | full ✅ |
 | 9 | `infra/serverless/lambda_api.tf` (+ zip artifact) | existing | lambda only |
+| 10 | EKS: `infra/eks/main.tf` `service_repos` + `infra/eks/k8s/<svc>.yaml` + deploy.yml `SVC` loop + ci.yml matrix/counts | existing | if it ships a Dockerfile |
 
 Commit on a `feature/...` branch, present tense ("Add go service with 32 patterns"), never
 `.env`, never `successful_repos.txt`.

@@ -13,7 +13,7 @@ This project demonstrates a complete microservices ecosystem with:
 - **Database**: MySQL with connection pooling; Redis for the caching patterns
 - **API Documentation**: Swagger/OpenAPI integration
 - **Containerization**: Docker & Docker Compose
-- **Cloud Deployment**: AWS with Terraform (Lambda maintained; EKS planned; ECS deprecated — see `infra/README.md`)
+- **Cloud Deployment**: AWS with Terraform (EKS maintained — the primary path; Lambda maintained — small-scale; ECS deprecated — see `infra/README.md`)
 - **Infrastructure as Code**: Terraform modules for scalable deployment
 
 ## 📋 Services
@@ -90,11 +90,16 @@ run.bat docker
 ### 3. AWS Cloud Deployment
 
 ```bash
-# Deploy only Lambda functions (maintained path — builds the zip artifacts first)
+# Lambda — small-scale maintained path (builds the zip artifacts first)
 ./run.sh lambda
+
+# EKS — primary maintained path (Fargate-only cluster + one ECR repo per service)
+AWS_REGION=eu-west-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=eks ./create_stack.sh
+# then push to main: .github/workflows/deploy.yml builds/pushes all 7 images
+# and applies the k8s manifests — see infra/eks/README.md
 ```
 
-> The legacy `./run.sh aws` (root `infra/` Terraform) is **deprecated** and now fails fast with a pointer. See `infra/README.md` for the status of every stack; the EKS path lands in `infra/eks`.
+> The legacy `./run.sh aws` (root `infra/` Terraform) is **deprecated** and now fails fast with a pointer. See `infra/README.md` for the status of every stack.
 
 ## 🛠️ Development
 
@@ -153,6 +158,8 @@ infra/
 ├── modules/
 │   ├── vpc/          # VPC, subnets, gateways
 │   └── instances/    # EC2, security groups
+├── eks/              # EKS (Fargate) + ECR — MAINTAINED, the primary AWS path
+│   └── k8s/          # k8s manifests (Deployment+Service per service, HPA, ConfigMap)
 ├── docker/           # ECS deployment — DEPRECATED (broken; quarantined)
 ├── serverless/       # Lambda deployment — MAINTAINED
 ├── *.tf              # Root stack — DEPRECATED
@@ -267,10 +274,25 @@ Eureka Server → Database → Application Services
 - Service orchestration
 - Production-like environment
 
-### 3. AWS ECS (deprecated)
-The legacy ECS stack (`infra/docker`) is deprecated and quarantined — `./run.sh aws` fails fast with a pointer. The maintained AWS path today is Lambda (`./run.sh lambda`); EKS lands in `infra/eks`.
+### 3. AWS EKS (Fargate) — primary
+```bash
+AWS_REGION=eu-west-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=eks ./create_stack.sh
+```
+- Fargate-only cluster (no nodes to manage) + one ECR repo per service
+- k8s manifests in `infra/eks/k8s/` (rendered by `scripts/render-k8s.sh`)
+- CI/CD: `.github/workflows/deploy.yml` builds + pushes all 7 images and applies the manifests on push to main
+- Entry point: the gateway Service (NLB) — start at `infra/eks/README.md`
 
 ### 4. AWS Lambda
+```bash
+./run.sh lambda
+```
+- Serverless compute
+- Event-driven architecture
+- Cost-effective for sporadic workloads
+
+### 5. AWS ECS (deprecated)
+The legacy ECS stack (`infra/docker`) is deprecated and quarantined — `./run.sh aws` fails fast with a pointer. The maintained AWS paths are EKS (primary, above) and Lambda; see `infra/README.md`.
 ```bash
 ./run.sh lambda
 ```

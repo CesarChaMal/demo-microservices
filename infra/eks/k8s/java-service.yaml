@@ -1,0 +1,117 @@
+# Java Service (Spring Boot).
+#
+# Honest degradation on k8s (no mysql/redis/rabbitmq in this cluster — see
+# k8s/README.md): SPRING_DATASOURCE_URL is unset so Spring falls back to the
+# H2 in-memory default in application.yml; REDIS_URL is unset so the caching
+# patterns report degraded in /health; the contract (/info, /process) and the
+# in-JVM pattern routes work as-is.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: java-service
+  namespace: demo-microservices
+  labels:
+    app: java-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: java-service
+  template:
+    metadata:
+      labels:
+        app: java-service
+    spec:
+      containers:
+        - name: java-service
+          image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/demo-java-service:${TAG}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "default"
+            # SPRING_DATASOURCE_* deliberately unset → H2 fallback (see header)
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              valueFrom:
+                configMapKeyRef:
+                  name: demo-config
+                  key: EUREKA_SERVER_URL
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: demo-secrets
+                  key: JWT_SECRET
+            - name: METRICS_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: demo-config
+                  key: METRICS_ENABLED
+            - name: RATE_LIMIT_REQUESTS_PER_MINUTE
+              valueFrom:
+                configMapKeyRef:
+                  name: demo-config
+                  key: RATE_LIMIT_REQUESTS_PER_MINUTE
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 6
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: java-service
+  namespace: demo-microservices
+  labels:
+    app: java-service
+spec:
+  type: ClusterIP
+  selector:
+    app: java-service
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+# HPA needs metrics-server (deployed by the deploy workflow / k8s/README.md).
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: java-service
+  namespace: demo-microservices
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: java-service
+  minReplicas: 1
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
