@@ -318,6 +318,14 @@ HTTP forms: node-service curls `/health` (any 2xx passes — `/health` returns 2
 curl — probes the same URL with a stdlib `urllib` one-liner. Grep for `"status":"UP"`
 only if your endpoint is Actuator-style, where a substring means healthy.
 
+**Who gets a compose block?** Only the full family — the ten keys in `docker-compose.yml`
+are the full services plus infra (`eureka-server`, `mysql`, `redis`, `rabbitmq`). The
+`demo-simple-*` and lambda variants are never composed; that absence is what keeps
+`docker compose up` meaning "the full stack". If an optional service ever *should* be
+composable but not always started, give its block a `profiles: ["extra"]` key — profiled
+services are skipped by plain `docker compose up` and started only with
+`docker compose --profile extra up`.
+
 ### Step 6 — `.env` / `.env.security` entries
 
 `.env.security` is committed (placeholder values); `.env` is its local copy and **never
