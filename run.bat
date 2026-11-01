@@ -97,18 +97,18 @@ if errorlevel 1 (
         exit /b 1
     )
 ) else (
-    REM Try Java 21 first, then 11
-    sdk use java 21.fx-zulu >nul 2>&1 || sdk use java 21-zulu >nul 2>&1
+    REM Try configured Java version first, then 11
+    sdk use java %JAVA_VERSION%.fx-zulu >nul 2>&1 || sdk use java %JAVA_VERSION%-zulu >nul 2>&1
     if not errorlevel 1 (
-        echo Using Java 21 via SDKMAN
+        echo Using Java %JAVA_VERSION% via SDKMAN
     ) else (
         sdk use java 11.fx-zulu >nul 2>&1 || sdk use java 11-zulu >nul 2>&1
         if not errorlevel 1 (
             echo Using Java 11 via SDKMAN
         ) else (
-            echo Installing Java 21-zulu via SDKMAN...
-            sdk install java 21-zulu
-            sdk use java 21-zulu
+            echo Installing Java %JAVA_VERSION%-zulu via SDKMAN...
+            sdk install java %JAVA_VERSION%-zulu
+            sdk use java %JAVA_VERSION%-zulu
         )
     )
 )
@@ -133,18 +133,18 @@ if errorlevel 1 (
         exit /b 1
     )
 ) else (
-    REM Try Node 20 first, then 18
-    nvm use 20 >nul 2>&1
+    REM Try configured Node.js version first, then 18
+    nvm use %NODE_VERSION% >nul 2>&1
     if not errorlevel 1 (
-        echo Using Node.js 20 via NVM
+        echo Using Node.js %NODE_VERSION% via NVM
     ) else (
         nvm use 18 >nul 2>&1
         if not errorlevel 1 (
             echo Using Node.js 18 via NVM
         ) else (
-            echo Installing Node.js 20 via NVM...
-            nvm install 20
-            nvm use 20
+            echo Installing Node.js %NODE_VERSION% via NVM...
+            nvm install %NODE_VERSION%
+            nvm use %NODE_VERSION%
         )
     )
 )
@@ -169,18 +169,18 @@ if errorlevel 1 (
         exit /b 1
     )
 ) else (
-    REM Try Python 3.11 first, then 3.13
-    pyenv global 3.11 >nul 2>&1
+    REM Try configured Python version first, then 3.13
+    pyenv global %PYTHON_VERSION% >nul 2>&1
     if not errorlevel 1 (
-        echo Using Python 3.11 via pyenv
+        echo Using Python %PYTHON_VERSION% via pyenv
     ) else (
         pyenv global 3.13 >nul 2>&1
         if not errorlevel 1 (
             echo Using Python 3.13 via pyenv
         ) else (
-            echo Installing Python 3.11 via pyenv...
-            pyenv install 3.11
-            pyenv global 3.11
+            echo Installing Python %PYTHON_VERSION% via pyenv...
+            pyenv install %PYTHON_VERSION%
+            pyenv global %PYTHON_VERSION%
         )
     )
 )
