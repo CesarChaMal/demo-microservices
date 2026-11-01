@@ -1,5 +1,6 @@
 package com.example.java_service.controller;
 
+import com.example.java_service.client.GoServiceClient;
 import com.example.java_service.client.NodeServiceClient;
 import com.example.java_service.client.PythonServiceClient;
 import com.example.java_service.cqrs.*;
@@ -25,17 +26,20 @@ public class EnterpriseController {
 
     private final PythonServiceClient pythonServiceClient;
     private final NodeServiceClient nodeServiceClient;
+    private final GoServiceClient goServiceClient;
     private final CommandHandler commandHandler;
     private final QueryHandler queryHandler;
     private final EventPublisher eventPublisher;
 
     public EnterpriseController(PythonServiceClient pythonServiceClient,
                                NodeServiceClient nodeServiceClient,
+                               GoServiceClient goServiceClient,
                                CommandHandler commandHandler,
                                QueryHandler queryHandler,
                                EventPublisher eventPublisher) {
         this.pythonServiceClient = pythonServiceClient;
         this.nodeServiceClient = nodeServiceClient;
+        this.goServiceClient = goServiceClient;
         this.commandHandler = commandHandler;
         this.queryHandler = queryHandler;
         this.eventPublisher = eventPublisher;
@@ -99,11 +103,15 @@ public class EnterpriseController {
             Map<String, Object> pythonResult = pythonServiceClient.process(Map.of("value", request.getValue()));
             Map<String, Object> nodeResult = nodeServiceClient.process(Map.of("value", request.getValue()));
             Map<String, Object> nodeInfo = nodeServiceClient.getInfo();
-            
+            Map<String, Object> goResult = goServiceClient.process(Map.of("value", request.getValue()));
+            Map<String, Object> goInfo = goServiceClient.getInfo();
+
             return Map.of(
                 "python", pythonResult,
                 "node", nodeResult,
                 "nodeInfo", nodeInfo,
+                "go", goResult,
+                "goInfo", goInfo,
                 "pattern", "Service Aggregation with OpenFeign"
             );
         } catch (Exception e) {

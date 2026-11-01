@@ -41,7 +41,8 @@ class APIGateway extends EventEmitter {
         this.serviceRegistry = {
             'java-service': 'http://java-service:8080',
             'node-service': 'http://node-service:3000',
-            'python-service': 'http://python-service:5001'
+            'python-service': 'http://python-service:5001',
+            'go-service': 'http://go-service:5002'
         };
         this.stats = {
             totalRequests: 0,

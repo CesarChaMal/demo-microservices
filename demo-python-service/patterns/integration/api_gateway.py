@@ -40,7 +40,8 @@ class APIGateway:
         self.service_registry = {
             'java-service': 'http://java-service:8080',
             'node-service': 'http://node-service:3000',
-            'python-service': 'http://python-service:5001'
+            'python-service': 'http://python-service:5001',
+            'go-service': 'http://go-service:5002'
         }
         self.request_count = 0
         self.error_count = 0

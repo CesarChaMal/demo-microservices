@@ -7,8 +7,9 @@ A comprehensive microservices architecture demonstration featuring multiple depl
 This project demonstrates a complete microservices ecosystem with:
 
 - **Service Discovery**: Netflix Eureka Server
-- **Multiple Technology Stacks**: Java (Spring Boot), Node.js (Express), Python (Flask)
-- **Database**: MySQL with connection pooling
+- **Multiple Technology Stacks**: Java (Spring Boot), Node.js (Express), Python (Flask), Go (chi)
+- **Pattern Catalog**: 32 canonical microservices patterns implemented per language (`JAVA-PATTERNS.md`, `NODE-PATTERNS.md`, `PYTHON-PATTERNS.md`, `GO-PATTERNS.md`)
+- **Database**: MySQL with connection pooling; Redis for the caching patterns
 - **API Documentation**: Swagger/OpenAPI integration
 - **Containerization**: Docker & Docker Compose
 - **Cloud Deployment**: AWS with Terraform (ECS, Lambda, RDS)
@@ -22,7 +23,13 @@ This project demonstrates a complete microservices ecosystem with:
 | **Java Service** | Spring Boot 3 + Java 22 | 8080 | REST API with database integration |
 | **Node Service** | Express.js + Node 20 | 3000 | Lightweight API service |
 | **Python Service** | Flask + Python 3.11 | 5001 | Data processing service |
+| **Go Service** | chi router + Go 1.22 | 5002 | Go API service with Eureka registration (raw REST client) |
 | **MySQL Database** | MySQL 8.0 | 3306 | Persistent data storage |
+| **Redis** | Redis 7 Alpine | 6379 | Cache backing for caching patterns |
+
+### Simplified Services
+
+Each full service has a `demo-simple-*` counterpart (`demo-simple-java-service`, `demo-simple-node-service`, `demo-simple-python-service`, `demo-simple-go-service`) — a minimal same-contract variant (`GET /info`, `POST /process`) for comparing the skeleton across languages. They are not wired into docker-compose; see `ADDING_A_MICROSERVICE.md` for the family rules.
 
 ### Lambda Functions
 - **Java Lambda**: Serverless Spring Boot application
@@ -59,6 +66,7 @@ run.bat docker
 - Java Service API: http://localhost:8080/swagger-ui.html
 - Node Service API: http://localhost:3000/api-docs
 - Python Service API: http://localhost:5001/apidocs
+- Go Service API: http://localhost:5002/info
 
 ### 2. Local Development
 
@@ -125,6 +133,7 @@ Services automatically register with Eureka Server:
 - Java Service: `JAVA-SERVICE`
 - Node Service: `NODE-SERVICE`  
 - Python Service: `PYTHON-SERVICE`
+- Go Service: `GO-SERVICE`
 
 ## 🏗️ Infrastructure
 
@@ -178,6 +187,8 @@ services:
   java-service:     # Spring Boot API
   node-service:     # Express.js API
   python-service:   # Flask API
+  go-service:       # Go (chi) API
+  redis:           # Cache for the caching patterns
   mysql:           # Database with health checks
 ```
 
@@ -295,6 +306,7 @@ curl http://localhost:8761/eureka/apps
 - **Java**: Spring Boot 3.3.1, Spring Cloud 2023.0.2, Java 22
 - **Node.js**: Express 4.21.1, Eureka JS Client, Node 20
 - **Python**: Flask 3.0.0, py-eureka-client, Python 3.11
+- **Go**: chi v5, Eureka over raw REST (`internal/eureka`), Go 1.22
 
 ### Infrastructure & Security
 - **Containerization**: Docker, Docker Compose with health checks
@@ -338,7 +350,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Confirm RDS encryption is properly configured
 
 **Port conflicts:**
-- Ensure ports 3000, 5001, 8080, 8761, 3306 are available
+- Ensure ports 3000, 5001, 5002, 8080, 8761, 3306, 6379 are available
 - Modify port mappings in `docker-compose.yml` if needed
 - Check security group rules for AWS deployments
 
