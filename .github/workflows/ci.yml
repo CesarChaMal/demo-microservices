@@ -80,7 +80,7 @@ jobs:
         run: |
           npm ci
           node --check app.js
-          node --test tests/
+          node --test tests/*.test.js
       - name: Syntax-check simple + lambda entrypoints
         run: |
           node --check demo-simple-node-service/app.js
