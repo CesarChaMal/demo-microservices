@@ -200,6 +200,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The compose file declares `env_file: .env`, which is gitignored —
+      # `docker compose config` fails outright without it. Materialize the
+      # placeholder template exactly as a fresh clone would.
+      - name: Materialize .env from the template
+        run: cp .env.example .env
       - name: Validate compose file
         run: docker compose config -q
 

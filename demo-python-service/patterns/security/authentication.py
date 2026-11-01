@@ -4,6 +4,7 @@ Provides token-based authentication and authorization.
 """
 
 import time
+import functools
 import jwt
 import hashlib
 from typing import Dict, Any, Optional
@@ -44,6 +45,7 @@ class AuthenticationService:
 def auth_required(roles: list = None):
     """Decorator for authentication"""
     def decorator(f):
+        @functools.wraps(f)
         def wrapper(*args, **kwargs):
             from flask import request, jsonify, g
             

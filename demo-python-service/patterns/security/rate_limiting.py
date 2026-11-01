@@ -4,6 +4,7 @@ Controls request rates to prevent abuse and ensure fair resource usage.
 """
 
 import time
+import functools
 import threading
 from typing import Dict, Any, Optional
 from collections import defaultdict, deque
@@ -72,6 +73,7 @@ class SlidingWindowRateLimiter:
 def rate_limit_middleware(limiter):
     """Flask middleware for rate limiting"""
     def decorator(f):
+        @functools.wraps(f)
         def wrapper(*args, **kwargs):
             from flask import request, jsonify
             
