@@ -356,7 +356,11 @@ public interface GoServiceClient {
 ```
 
 Real clients return `Map<String, Object>` (no per-peer DTO), declare `GET /info` alongside
-`POST /process`, and the fallback implements both. Then:
+`POST /process`, and the fallback implements both. One `@FeignClient` per service name — if
+Java ever needs a *second* interface targeting the same name (e.g. a pattern demo), give each
+a unique `contextId`, or the context dies at startup with
+`BeanDefinitionOverrideException: ...FeignClientSpecification already bound`
+(see `patterns/integration/OpenFeignService.java`). Then:
 
 1. Add a matching resilience4j instance block named `<your-service>` in
    `demo-java-service/src/main/resources/application.yml` — copy the existing `go-service`
