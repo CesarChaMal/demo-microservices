@@ -35,16 +35,17 @@ public class UltimateController {
         if (idempotencyKey == null) {
             idempotencyKey = idempotencyService.generateKey("process", request.getValue().toString());
         }
-        
+        final String key = idempotencyKey;  // effectively-final copy for the lambda below
+
         try {
             Map<String, Object> result = idempotencyService.executeIdempotent(
-                idempotencyKey,
+                key,
                 () -> {
                     // Simulate processing
                     int multiplier = featureManager.isActive(FeatureToggle.NEW_CALCULATION_ALGORITHM) ? 5 : 2;
                     return Map.of(
                         "result", request.getValue() * multiplier,
-                        "idempotencyKey", idempotencyKey,
+                        "idempotencyKey", key,
                         "algorithm", featureManager.isActive(FeatureToggle.NEW_CALCULATION_ALGORITHM) ? "v2" : "v1",
                         "processId", UUID.randomUUID().toString()
                     );
