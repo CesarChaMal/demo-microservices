@@ -454,6 +454,11 @@ honestly (java→H2, node/python→cache degrade, go→in-process buffer). A new
 depends on them follows the same honest-degradation rule; document its fallback in its
 manifest's comments.
 
+**Cost control:** charges start when you run `MODE=eks ./create_stack.sh` and stop with
+`./scripts/destroy-aws.sh` (EKS stack; `--mode all` adds the Lambda stack — see
+`infra/README.md` → "Teardown / cost safety"). A new ECR repo costs ~$0 (unused), but a
+new LoadBalancer-type Service does not — keep new services ClusterIP behind the gateway.
+
 ### Step 9 — Update the docs (registration points — guard rule applies)
 
 - `CLAUDE.md` — service table row, pattern count, any new infra

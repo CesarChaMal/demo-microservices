@@ -31,7 +31,7 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-1' }}
+  AWS_REGION: ${{ vars.AWS_REGION || 'eu-central-1' }}  # matches infra/*.tfvars
   CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME || 'demo-dev-cluster' }}
   NAMESPACE: demo-microservices
 
