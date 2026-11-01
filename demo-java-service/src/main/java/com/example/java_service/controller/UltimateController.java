@@ -1,7 +1,7 @@
 package com.example.java_service.controller;
 
 import com.example.java_service.idempotency.IdempotencyService;
-import com.example.java_service.materialized.MaterializedViewService;
+import com.example.java_service.patterns.caching.MaterializedViewService;
 import com.example.java_service.toggle.FeatureToggle;
 import com.example.java_service.dto.ValueRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,7 +75,7 @@ public class UltimateController {
     }
     
     @GetMapping("/hourly-stats/{hour}")
-    public Map<Object, Object> getHourlyStats(@PathVariable int hour) {
+    public Map<String, Object> getHourlyStats(@PathVariable int hour) {
         return materializedViewService.getHourlyStats(hour);
     }
     

@@ -4,8 +4,8 @@ import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -104,6 +104,27 @@ public class MaterializedViewService {
         );
     }
     
+    public void recordRequest(boolean success) {
+        metrics.put("total_requests", metrics.getOrDefault("total_requests", 0L) + 1);
+        if (success) {
+            metrics.put("successful_requests", metrics.getOrDefault("successful_requests", 0L) + 1);
+        } else {
+            metrics.put("failed_requests", metrics.getOrDefault("failed_requests", 0L) + 1);
+        }
+    }
+
+    public Map<String, Object> getCurrentStats() {
+        Map<String, Object> stats = new ConcurrentHashMap<>(metrics);
+        stats.put("lastUpdated", System.currentTimeMillis());
+        return stats;
+    }
+
+    public Map<String, Object> getHourlyStats(int hour) {
+        Map<String, Object> stats = new ConcurrentHashMap<>(metrics);
+        stats.put("hour", hour);
+        return stats;
+    }
+
     public Map<String, Object> getStats() {
         Map<String, Object> stats = new ConcurrentHashMap<>(metrics);
         stats.put("total_views", views.size());

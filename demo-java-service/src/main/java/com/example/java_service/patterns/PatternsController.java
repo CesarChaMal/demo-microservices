@@ -291,23 +291,23 @@ public class PatternsController {
     
     @GetMapping("/stats")
     public ResponseEntity<?> getAllPatternStats() {
-        return ResponseEntity.ok(Map.of(
-            "circuitBreaker", circuitBreakerService.getCircuitBreakerStats(),
-            "retry", retryService.getRetryStats(),
-            "bulkhead", bulkheadService.getBulkheadStats(),
-            "timeout", timeoutService.getTimeoutStats(),
-            "cacheAside", cacheAsideService.getCacheStats(),
-            "writeBehind", writeBehindCache.getStats(),
-            "materializedView", materializedViewService.getStats(),
-            "saga", sagaOrchestrator.getSagaStats(),
-            "outbox", outboxService.getOutboxStats(),
-            "twoPhaseCommit", twoPhaseCommitService.getStats(),
-            "apiGateway", apiGatewayService.getStats(),
-            "stranglerFig", stranglerFigService.getStats(),
-            "authentication", authenticationService.getAuthStats(),
-            "rateLimiting", rateLimitingService.getRateLimitStats(),
-            "asyncProcessing", asyncProcessingService.getAsyncStats(),
-            "distributedTracing", distributedTracingService.getTracingStats()
+        return ResponseEntity.ok(Map.ofEntries(
+            Map.entry("circuitBreaker", circuitBreakerService.getCircuitBreakerStats()),
+            Map.entry("retry", retryService.getRetryStats()),
+            Map.entry("bulkhead", bulkheadService.getBulkheadStats()),
+            Map.entry("timeout", timeoutService.getTimeoutStats()),
+            Map.entry("cacheAside", cacheAsideService.getCacheStats()),
+            Map.entry("writeBehind", writeBehindCache.getStats()),
+            Map.entry("materializedView", materializedViewService.getStats()),
+            Map.entry("saga", sagaOrchestrator.getSagaStats()),
+            Map.entry("outbox", outboxService.getOutboxStats()),
+            Map.entry("twoPhaseCommit", twoPhaseCommitService.getStats()),
+            Map.entry("apiGateway", apiGatewayService.getStats()),
+            Map.entry("stranglerFig", stranglerFigService.getStats()),
+            Map.entry("authentication", authenticationService.getAuthStats()),
+            Map.entry("rateLimiting", rateLimitingService.getRateLimitStats()),
+            Map.entry("asyncProcessing", asyncProcessingService.getAsyncStats()),
+            Map.entry("distributedTracing", distributedTracingService.getTracingStats())
         ));
     }
 }

@@ -134,21 +134,21 @@ public class SagaOrchestrator {
                 logger.info("Validating order: {}", context.get("order_id"));
                 return Map.of("validated", true);
             },
-            context -> logger.info("Compensating order validation"));
+            context -> { logger.info("Compensating order validation"); return null; });
             
         orderSaga.addStep("reserve_inventory",
             context -> {
                 logger.info("Reserving inventory for order: {}", context.get("order_id"));
                 return Map.of("reserved", true, "reservation_id", UUID.randomUUID().toString());
             },
-            context -> logger.info("Releasing inventory reservation"));
+            context -> { logger.info("Releasing inventory reservation"); return null; });
             
         orderSaga.addStep("process_payment",
             context -> {
                 logger.info("Processing payment for order: {}", context.get("order_id"));
                 return Map.of("payment_processed", true, "transaction_id", UUID.randomUUID().toString());
             },
-            context -> logger.info("Refunding payment"));
+            context -> { logger.info("Refunding payment"); return null; });
             
         sagaDefinitions.put("order_processing", orderSaga);
     }

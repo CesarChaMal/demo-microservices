@@ -2,7 +2,6 @@ package com.example.java_service.config;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.retry.RetryConfig;
-import io.github.resilience4j.bulkhead.BulkheadConfig;
 import io.github.resilience4j.timelimiter.TimeLimiterConfig;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,14 +28,6 @@ public class ResilienceConfig {
         return RetryConfig.custom()
                 .maxAttempts(3)
                 .waitDuration(Duration.ofSeconds(1))
-                .build();
-    }
-
-    @Bean
-    public BulkheadConfig bulkheadConfig() {
-        return BulkheadConfig.custom()
-                .maxConcurrentCalls(10)
-                .maxWaitDuration(Duration.ofSeconds(2))
                 .build();
     }
 
