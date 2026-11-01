@@ -1,0 +1,116 @@
+# Deploy to EKS (Fargate) — the maintained AWS path.
+#
+# Prerequisites (one-time, repo Settings → Secrets/Variables):
+#   Preferred (OIDC, no long-lived keys):  secret  AWS_DEPLOY_ROLE_ARN
+#     — a role trusting this repo's OIDC provider with eks:* / ecr:* / iam
+#       (passrole for the Fargate profiles) within the account.
+#   Fallback (static keys):                secrets AWS_ACCESS_KEY_ID +
+#                                           AWS_SECRET_ACCESS_KEY
+#   Either way:                            variable or edit AWS_REGION below,
+#                                           and a cluster created via
+#                                           `MODE=eks ./create_stack.sh`
+#                                           (default name: demo-dev-cluster).
+#
+# Pipeline: credentials → kubeconfig → build+push the 7 service images to
+# ECR (immutable sha- tag + latest) → metrics-server (Fargate flags) →
+# render infra/eks/k8s with the sha tag → kubectl apply.
+
+name: Deploy EKS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-eks
+  cancel-in-progress: false
+
+permissions:
+  id-token: write   # OIDC
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'eu-west-1' }}
+  CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME || 'demo-dev-cluster' }}
+  NAMESPACE: demo-microservices
+
+jobs:
+  deploy:
+    name: Build, push, apply
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC — preferred)
+        if: ${{ secrets.AWS_DEPLOY_ROLE_ARN != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure AWS credentials (static keys — fallback)
+        if: ${{ secrets.AWS_DEPLOY_ROLE_ARN == '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve account + registry
+        run: |
+          echo "AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)" >> "$GITHUB_ENV"
+          echo "REGISTRY=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com" >> "$GITHUB_ENV"
+          echo "TAG=sha-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
+      - name: Point kubectl at the cluster
+        run: aws eks update-kubeconfig --region "$AWS_REGION" --name "$CLUSTER_NAME"
+
+      - name: Login to ECR
+        run: aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$REGISTRY"
+
+      - name: Build and push the 7 service images
+        run: |
+          status=0
+          for SVC in eureka-server gateway-service java-service node-service python-service go-service dotnet-service; do
+            REPO="$REGISTRY/demo-$SVC"
+            echo "==> $REPO:$TAG"
+            if ! docker build -t "$REPO:$TAG" -t "$REPO:latest" "demo-$SVC"; then
+              echo "BUILD FAILED: demo-$SVC"; status=1; continue
+            fi
+            # ECR tags are IMMUTABLE — a re-run of the same commit pushes an
+            # identical tag name; that push fails, which is fine.
+            docker push "$REPO:$TAG" || echo "(sha tag already present — immutable ECR, skipping)"
+            docker push "$REPO:latest"
+          done
+          exit $status
+
+      - name: metrics-server (required for the HPAs on Fargate)
+        run: |
+          kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+          # Fargate kubelets are only reachable via InternalIP, and their
+          # certs aren't signed for metrics-server's default verification —
+          # append both flags once (guard keeps re-runs idempotent).
+          if ! kubectl -n kube-system get deployment metrics-server \
+              -o jsonpath='{.spec.template.spec.containers[0].args}' \
+              | grep -q kubelet-preferred-address-types; then
+            kubectl -n kube-system patch deployment metrics-server --type json \
+              -p='[
+                {"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-preferred-address-types=InternalIP"},
+                {"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}
+              ]'
+          fi
+
+      - name: Render manifests and apply
+        run: |
+          AWS_ACCOUNT_ID="$AWS_ACCOUNT_ID" AWS_REGION="$AWS_REGION" TAG="$TAG" \
+            ./scripts/render-k8s.sh | kubectl apply -f -
+
+      - name: Rollout status + entry point
+        run: |
+          for SVC in eureka-server gateway-service java-service node-service python-service go-service dotnet-service; do
+            kubectl -n "$NAMESPACE" rollout status "deployment/$SVC" --timeout=300s || true
+          done
+          echo "Gateway (NLB) address:"
+          kubectl -n "$NAMESPACE" get service gateway-service

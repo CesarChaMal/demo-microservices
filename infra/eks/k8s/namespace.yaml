@@ -1,0 +1,12 @@
+# Namespace the demo services run in.
+#
+# Must match:
+#   - var.namespace in infra/eks/variables.tf (the Fargate "apps" profile
+#     selector schedules pods from this namespace onto Fargate)
+#   - metadata.namespace in every other file in this directory
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo-microservices
+  labels:
+    app.kubernetes.io/part-of: demo-microservices

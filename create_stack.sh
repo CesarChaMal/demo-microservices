@@ -5,17 +5,18 @@ set -euo pipefail
 [[ -f .env ]] && source .env
 
 # Defaults
-: "${MODE:=docker}"   # docker | serverless
+: "${MODE:=docker}"   # docker | serverless | eks
 : "${ENV:=dev}"
 
 usage() {
   cat <<EOF
 Usage:
-  AWS_REGION=<region> AWS_ACCOUNT_ID=<id> APP=<name> ENV=<env> VER=<ver> MODE=<docker|serverless> ./create_stack.sh
+  AWS_REGION=<region> AWS_ACCOUNT_ID=<id> APP=<name> ENV=<env> VER=<ver> MODE=<docker|serverless|eks> ./create_stack.sh
 
 Examples:
   AWS_REGION=eu-west-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=serverless ./create_stack.sh
   AWS_REGION=eu-west-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=docker     ./create_stack.sh
+  AWS_REGION=eu-west-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=eks        ./create_stack.sh
 EOF
 }
 
@@ -37,8 +38,8 @@ for v in "${REQ[@]}"; do
   fi
 done
 
-if [[ "$MODE" != "docker" && "$MODE" != "serverless" ]]; then
-  echo "ERROR: MODE must be 'docker' or 'serverless' (got: $MODE)"; exit 1
+if [[ "$MODE" != "docker" && "$MODE" != "serverless" && "$MODE" != "eks" ]]; then
+  echo "ERROR: MODE must be 'docker', 'serverless' or 'eks' (got: $MODE)"; exit 1
 fi
 
 echo ">>> Creating stack"

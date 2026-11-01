@@ -1,0 +1,84 @@
+# Gateway — the single public entry point (Spring Cloud Gateway, lb:// routes
+# to every service via Eureka). This is the only Service of type
+# LoadBalancer: the in-tree NLB annotation below needs no AWS Load Balancer
+# Controller installed, which keeps the demo dependency-free.
+#
+# Get the address after apply:
+#   kubectl -n demo-microservices get svc gateway-service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway-service
+  namespace: demo-microservices
+  labels:
+    app: gateway-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gateway-service
+  template:
+    metadata:
+      labels:
+        app: gateway-service
+    spec:
+      containers:
+        - name: gateway-service
+          image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/demo-gateway-service:${TAG}
+          ports:
+            - containerPort: 8081
+          env:
+            - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+              valueFrom:
+                configMapKeyRef:
+                  name: demo-config
+                  key: EUREKA_SERVER_URL
+          resources:
+            requests:
+              cpu: "500m"
+              memory: 1Gi
+            limits:
+              cpu: "500m"
+              memory: 1Gi
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            periodSeconds: 10
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 6
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-service
+  namespace: demo-microservices
+  labels:
+    app: gateway-service
+  annotations:
+    # In-tree NLB (no AWS Load Balancer Controller required). "ip" target
+    # type is the only option on Fargate — pods, not nodes.
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+spec:
+  type: LoadBalancer
+  selector:
+    app: gateway-service
+  ports:
+    - name: http
+      port: 8081
+      targetPort: 8081

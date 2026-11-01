@@ -5,7 +5,7 @@ set -euo pipefail
 # Required env vars:
 #   AWS_REGION, AWS_ACCOUNT_ID, APP, ENV, VER
 # Optional:
-#   MODE = serverless | docker   (default: docker)
+#   MODE = serverless | docker | eks   (default: docker)
 # ---------
 
 MODE="${MODE:-docker}"
@@ -38,8 +38,9 @@ fi
 case "$MODE" in
   serverless) TF_DIR="infra/serverless" ;;
   docker)     TF_DIR="infra/docker" ;;
+  eks)        TF_DIR="infra/eks" ;;
   *)
-    echo "ERROR: Unknown MODE='$MODE' (expected 'serverless' or 'docker')"
+    echo "ERROR: Unknown MODE='$MODE' (expected 'serverless', 'docker' or 'eks')"
     exit 1
     ;;
 esac
@@ -80,6 +81,13 @@ terraform validate
 
 echo "Destroying ${MODE} stack for ${APP}-${ENV}..."
 terraform destroy -auto-approve -var-file="${TFVARS_FILE}"
+
+if [[ "$MODE" == "eks" ]]; then
+  echo
+  echo "Reminder (eks): delete the k8s resources first so the NLB is released"
+  echo "inside the cluster before the VPC goes:"
+  echo "  AWS_ACCOUNT_ID=… AWS_REGION=$AWS_REGION TAG=latest ./scripts/render-k8s.sh | kubectl delete -f -"
+fi
 
 popd >/dev/null
 echo "Done."

@@ -15,11 +15,12 @@ if [[ "${MISSING:-0}" -eq 1 ]]; then
   echo "Usage example:"
   echo "  AWS_REGION=eu-west-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=serverless ./create.sh"
   echo "  AWS_REGION=eu-west-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=docker ./create.sh"
+  echo "  AWS_REGION=eu-west-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=eks ./create.sh"
   exit 1
 fi
 
-if [[ "$MODE" != "serverless" && "$MODE" != "docker" ]]; then
-  echo "ERROR: MODE must be 'serverless' or 'docker' (got: $MODE)" >&2
+if [[ "$MODE" != "serverless" && "$MODE" != "docker" && "$MODE" != "eks" ]]; then
+  echo "ERROR: MODE must be 'serverless', 'docker' or 'eks' (got: $MODE)" >&2
   exit 1
 fi
 
@@ -119,44 +120,59 @@ terraform fmt -recursive
 terraform validate
 
 # -------------------------
-# (Optional) Docker image build & push to ECR (docker mode)
+# (Optional) Docker image build & push to ECR
+#
+# Set SERVICES (space-separated, service names WITHOUT the APP- prefix):
+#   SERVICES="java-service node-service python-service" ...
+# Service directories are named like the ECR repo (demo-java-service when
+# APP=demo) — the loop resolves both spellings.
 # -------------------------
-if [[ "$MODE" == "docker" ]]; then
-  echo "Docker mode selected. If you want to build & push images to ECR, set SERVICES (space-separated) and DOCKERFILE paths."
-
-  # Example (customize!): SERVICES="java-service node-service python-service"
-  # Each service expected at ../<service-dir> relative to repo root.
-  if [[ -n "${SERVICES:-}" ]]; then
-    echo "Building & pushing ECR images for: $SERVICES"
-    aws ecr get-login-password --region "$AWS_REGION" \
-      | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-
-    for SVC in $SERVICES; do
-      REPO="${APP}-${SVC}"
-      ECR_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${REPO}"
-
-      # Ensure repo
-      if ! aws ecr describe-repositories --repository-names "$REPO" --region "$AWS_REGION" >/dev/null 2>&1; then
-        aws ecr create-repository --repository-name "$REPO" --region "$AWS_REGION" >/dev/null
-      fi
-
-      # Build context path (adjust to your layout)
-      CONTEXT="../../${SVC}"
-      if [[ ! -d "$CONTEXT" ]]; then
-        echo "WARNING: $CONTEXT not found; skipping $SVC"
-        continue
-      fi
-
-      echo "Building ${ECR_URI}:${VER} from ${CONTEXT}"
-      docker build -t "${ECR_URI}:${VER}" "$CONTEXT"
-      docker push "${ECR_URI}:${VER}"
-
-      # Optionally write per-service vars for Terraform to consume (map of images)
-      echo "${SVC}=${ECR_URI}:${VER}" >> image_tags.env
-    done
-
-    echo "Note: Wire image_tags.env into your Terraform as needed (e.g., a map variable)."
+build_and_push_images() {
+  if [[ -z "${SERVICES:-}" ]]; then
+    echo "SERVICES not set — skipping image build/push."
+    echo "Hint: SERVICES=\"eureka-server gateway-service java-service node-service python-service go-service dotnet-service\""
+    return 0
   fi
+
+  echo "Building & pushing ECR images for: $SERVICES"
+  aws ecr get-login-password --region "$AWS_REGION" \
+    | docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+  for SVC in $SERVICES; do
+    REPO="${APP}-${SVC}"
+    ECR_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${REPO}"
+
+    # Ensure repo (eks mode: terraform created them already — this is a no-op)
+    if ! aws ecr describe-repositories --repository-names "$REPO" --region "$AWS_REGION" >/dev/null 2>&1; then
+      aws ecr create-repository --repository-name "$REPO" --region "$AWS_REGION" >/dev/null
+    fi
+
+    # Build context path: prefer the ECR-repo spelling (demo-<svc>),
+    # fall back to the bare service name.
+    CONTEXT="../../${REPO}"
+    if [[ ! -d "$CONTEXT" ]]; then
+      CONTEXT="../../${SVC}"
+    fi
+    if [[ ! -d "$CONTEXT" ]]; then
+      echo "WARNING: ../../${REPO} (or ../../${SVC}) not found; skipping $SVC"
+      continue
+    fi
+
+    echo "Building ${ECR_URI}:${VER} from ${CONTEXT}"
+    docker build -t "${ECR_URI}:${VER}" "$CONTEXT"
+    docker push "${ECR_URI}:${VER}"
+
+    # Optionally write per-service vars for Terraform to consume (map of images)
+    echo "${SVC}=${ECR_URI}:${VER}" >> image_tags.env
+  done
+
+  echo "Note: Wire image_tags.env into your Terraform as needed (e.g., a map variable)."
+}
+
+# docker mode keeps its historical order: images first, then apply.
+if [[ "$MODE" == "docker" ]]; then
+  echo "Docker mode selected."
+  build_and_push_images
 fi
 
 # -------------------------
@@ -167,6 +183,25 @@ terraform plan -var-file="$TFVARS_FILE" -out out.terraform
 echo "Applying Terraform..."
 terraform apply -auto-approve out.terraform
 
+# eks mode: the ECR repos are created BY the apply above (ecr.tf for_each),
+# so images can only be built/pushed afterwards.
+if [[ "$MODE" == "eks" ]]; then
+  echo "EKS mode selected."
+  build_and_push_images
+fi
+
 popd >/dev/null
 
 echo "✅ Done. Mode: $MODE | Env: $ENV | State: s3://$BACKEND_BUCKET/$BACKEND_KEY"
+
+if [[ "$MODE" == "eks" ]]; then
+  cat <<EOF
+
+Next steps (EKS):
+  1. aws eks update-kubeconfig --region $AWS_REGION --name $APP-$ENV-cluster
+  2. Push images (or re-run with SERVICES=... to build & push them):
+     AWS_ACCOUNT_ID=... AWS_REGION=$AWS_REGION TAG=$VER ./scripts/render-k8s.sh | kubectl apply -f -
+  3. Or just push to main — .github/workflows/deploy.yml does steps 1-2 for you.
+  Entry point: kubectl -n demo-microservices get svc gateway-service
+EOF
+fi
