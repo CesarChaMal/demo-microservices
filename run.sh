@@ -40,15 +40,15 @@ setup_java() {
     [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
     
     if command -v sdk &> /dev/null; then
-        # Try Java 21 first, then 11
-        if sdk use java 21.fx-zulu 2>/dev/null || sdk use java 21-zulu 2>/dev/null; then
-            echo -e "${GREEN}Using Java 21 via SDKMAN${NC}"
+        # Try configured Java version first, then 11
+        if sdk use java ${JAVA_VERSION}.fx-zulu 2>/dev/null || sdk use java ${JAVA_VERSION}-zulu 2>/dev/null; then
+            echo -e "${GREEN}Using Java ${JAVA_VERSION} via SDKMAN${NC}"
         elif sdk use java 11.fx-zulu 2>/dev/null || sdk use java 11-zulu 2>/dev/null; then
             echo -e "${GREEN}Using Java 11 via SDKMAN${NC}"
         else
-            echo -e "${YELLOW}Installing Java 21-zulu via SDKMAN...${NC}"
-            sdk install java 21-zulu
-            sdk use java 21-zulu
+            echo -e "${YELLOW}Installing Java ${JAVA_VERSION}-zulu via SDKMAN...${NC}"
+            sdk install java ${JAVA_VERSION}-zulu
+            sdk use java ${JAVA_VERSION}-zulu
         fi
     elif command -v java &> /dev/null; then
         CURRENT_JAVA=$(java -version 2>&1 | head -1 | cut -d'"' -f2)
@@ -66,15 +66,15 @@ setup_node() {
     [[ -s "$HOME/.nvm/nvm.sh" ]] && source "$HOME/.nvm/nvm.sh"
     
     if command -v nvm &> /dev/null; then
-        # Try Node 20 first, then 18
-        if nvm use 20 2>/dev/null; then
-            echo -e "${GREEN}Using Node.js 20 via NVM${NC}"
+        # Try configured Node.js version first, then 18
+        if nvm use ${NODE_VERSION} 2>/dev/null; then
+            echo -e "${GREEN}Using Node.js ${NODE_VERSION} via NVM${NC}"
         elif nvm use 18 2>/dev/null; then
             echo -e "${GREEN}Using Node.js 18 via NVM${NC}"
         else
-            echo -e "${YELLOW}Installing Node.js 20 via NVM...${NC}"
-            nvm install 20
-            nvm use 20
+            echo -e "${YELLOW}Installing Node.js ${NODE_VERSION} via NVM...${NC}"
+            nvm install ${NODE_VERSION}
+            nvm use ${NODE_VERSION}
         fi
     elif command -v node &> /dev/null; then
         CURRENT_NODE=$(node -v)
@@ -94,15 +94,15 @@ setup_python() {
     eval "$(pyenv init - 2>/dev/null || true)"
     
     if command -v pyenv &> /dev/null; then
-        # Try Python 3.11 first, then 3.13
-        if pyenv global 3.11 2>/dev/null; then
-            echo -e "${GREEN}Using Python 3.11 via pyenv${NC}"
+        # Try configured Python version first, then 3.13
+        if pyenv global ${PYTHON_VERSION} 2>/dev/null; then
+            echo -e "${GREEN}Using Python ${PYTHON_VERSION} via pyenv${NC}"
         elif pyenv global 3.13 2>/dev/null; then
             echo -e "${GREEN}Using Python 3.13 via pyenv${NC}"
         else
-            echo -e "${YELLOW}Installing Python 3.11 via pyenv...${NC}"
-            pyenv install 3.11
-            pyenv global 3.11
+            echo -e "${YELLOW}Installing Python ${PYTHON_VERSION} via pyenv...${NC}"
+            pyenv install ${PYTHON_VERSION}
+            pyenv global ${PYTHON_VERSION}
         fi
     elif command -v python &> /dev/null; then
         CURRENT_PYTHON=$(python --version 2>&1 | cut -d' ' -f2)
@@ -141,18 +141,18 @@ run_local_stack() {
     
     # Start services in background
     echo -e "${YELLOW}Starting Eureka Server...${NC}"
-    cd demo-eureka-server && ./mvnw spring-boot:run &
+    ( cd demo-eureka-server && ./mvnw spring-boot:run ) &
     
     sleep 10
     
     echo -e "${YELLOW}Starting Java Service...${NC}"
-    cd ../demo-java-service && ./mvnw spring-boot:run &
+    ( cd demo-java-service && ./mvnw spring-boot:run ) &
     
     echo -e "${YELLOW}Starting Node Service...${NC}"
-    cd ../demo-node-service && npm start &
+    ( cd demo-node-service && npm start ) &
     
     echo -e "${YELLOW}Starting Python Service...${NC}"
-    cd ../demo-python-service && pip install -r requirements.txt && python app.py &
+    ( cd demo-python-service && pip install -r requirements.txt && python app.py ) &
     
     echo -e "${GREEN}Local stack started. Press Ctrl+C to stop all services.${NC}"
     wait
