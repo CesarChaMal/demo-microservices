@@ -21,6 +21,12 @@
 `demo-eureka-server` is the Netflix Eureka discovery server everything registers with
 (`demo-simple-eureka-server` also exists as an alternate/minimal server with a full Spring Boot layout).
 
+`demo-gateway-service` is the API gateway in front of them all — Spring Cloud Gateway on
+port 8081 routing `/java/**`, `/node/**`, `/python/**`, `/go/**` to `lb://<APPID>` (StripPrefix=1).
+Like the Eureka server it's core infrastructure, not a pattern-catalog service: no 32-pattern
+checklist, no Step 7 peer wiring — adding a service behind it is one route block in its
+`application.yml`.
+
 ### Port table (authoritative)
 
 | Port | Service | Status |
@@ -30,7 +36,7 @@
 | 3000 | `demo-node-service` | in use |
 | 5001 | `demo-python-service` | in use |
 | 3306 | MySQL (`mysql:8.0`) | in use |
-| 8081 | `demo-gateway-service` (API gateway) | reserved |
+| 8081 | `demo-gateway-service` (API gateway) | in use |
 | 5002 | `demo-go-service` | in use |
 | 5003 | `demo-dotnet-service` | reserved |
 | 6379 | Redis (`redis:7-alpine`) | in use |
@@ -146,6 +152,16 @@ extra keys beyond these are fine — java/node/python each add a few.
 - Multi-stage when the toolchain allows (build stage → slim runtime; `golang:*-alpine` →
   distroless is the best case; `node:*-alpine` and `python:*-slim` single-stage are fine).
 - Pin the base image tag.
+- **Maven images must build AND use the jar inside the image** — `RUN ./mvnw package
+  -DskipTests && mv target/*.jar app.jar`. A `COPY target/*.jar` instead copies a jar from
+  the build context, which only exists if you built on the host first; on a fresh checkout
+  (exactly what CI gets) that image build fails.
+- **Commit `.mvn/wrapper/maven-wrapper.properties` with the service.** The wrapper runs in
+  `only-script` mode: the script downloads Maven using the `distributionUrl` from that file,
+  so if it's gitignored `./mvnw` fails on a fresh checkout — the same class of bug as the
+  host-jar `COPY` above. (This repo's root `.gitignore` once carried a template `.mvn` rule
+  that did exactly that; it's removed and replaced with an explanatory note.) Verify with
+  `git ls-files <service>/.mvn/` — it must list the properties file.
 - The image must contain `curl` or `wget` **if** you use the HTTP compose healthcheck from
   Step 5. Distroless images ship neither — compile a tiny probe binary and exec it instead
   (`demo-go-service/internal/healthcheck/main.go` → compose `test: ["CMD", "/app/healthcheck"]`).

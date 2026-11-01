@@ -19,13 +19,9 @@ RUN ./mvnw dependency:go-offline
 # This includes all Java and resource files located in the src directory.
 COPY src ./src
 
-# Run Maven package to build the application, skipping unit tests to speed up the build process.
-# This produces a JAR file in the target directory.
-RUN ./mvnw package -DskipTests
-
-# Copy the built JAR file from the build stage into the /app directory in the container.
-# This is the executable JAR that contains your application.
-COPY target/*.jar app.jar
+# Build the jar and put it in place INSIDE the image. Not `COPY target/*.jar`:
+# that would copy a jar built on the host and fail on a fresh checkout (what CI gets).
+RUN ./mvnw package -DskipTests && mv target/*.jar app.jar
 
 # Declare the port on which the container should listen for connections.
 # This should match the port that your application uses.

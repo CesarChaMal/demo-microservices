@@ -25,7 +25,7 @@ This is a **comprehensive microservices architecture demonstration** featuring:
 
 - **Purpose**: Educational and demonstration repository showcasing production-ready microservices patterns
 - **Architecture**: Polyglot microservices with service discovery, multiple deployment strategies, and cloud-native patterns
-- **Scale**: 13 services (5 full-featured + 5 simplified + 3 serverless), 32 canonical microservices patterns
+- **Scale**: 13 services (5 full-featured + 5 simplified + 3 serverless) + 2 Eureka servers + 1 API gateway, 32 canonical microservices patterns
 - **Languages**: Java, Node.js, Python, Go
 - **Deployment**: Docker Compose, Local Development, AWS Lambda (maintained), AWS EKS (planned)
 
@@ -34,6 +34,7 @@ This is a **comprehensive microservices architecture demonstration** featuring:
 | Service | Technology | Port | Purpose |
 |---------|------------|------|---------|
 | **demo-eureka-server** | Spring Boot 3.3.1, Java 22 | 8761 | Service discovery and registration (Netflix Eureka) |
+| **demo-gateway-service** | Spring Cloud Gateway, Java 22 | 8081 | API gateway — routes `/<service>/**` to `lb://<SERVICE>` via Eureka (core infra, no pattern catalog) |
 | **demo-java-service** | Spring Boot 3.3.1, Java 22 | 8080 | Full-featured Java microservice with 32 patterns |
 | **demo-node-service** | Express 4.21.1, Node 22 | 3000 | Full-featured Node.js microservice with 32 patterns |
 | **demo-python-service** | Flask 3.0.0, Python 3.11 | 5001 | Full-featured Python microservice with 32 patterns |
@@ -81,6 +82,12 @@ demo-microservices/
 ├── demo-eureka-server/            # Service Discovery
 │   ├── src/main/java/             # Java source code
 │   ├── src/test/java/             # Test files
+│   ├── Dockerfile                 # Container definition
+│   └── pom.xml                    # Maven dependencies
+│
+├── demo-gateway-service/          # API Gateway (Spring Cloud Gateway, port 8081)
+│   ├── src/main/java/com/example/gateway_service/
+│   ├── src/main/resources/        # application.yml — lb:// routes per service
 │   ├── Dockerfile                 # Container definition
 │   └── pom.xml                    # Maven dependencies
 │

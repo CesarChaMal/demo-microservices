@@ -1,0 +1,7 @@
+Spring Cloud Gateway (Spring Boot 3.3.1 / Java 22) acting as the demo's single
+entry point. Registers with Eureka (GATEWAY-SERVICE) and routes /java/**,
+/node/**, /python/** and /go/** to lb://JAVA-SERVICE, lb://NODE-SERVICE,
+lb://PYTHON-SERVICE and lb://GO-SERVICE with StripPrefix=1, so
+http://localhost:8081/<service>/<endpoint> reaches the same contract endpoints
+the services expose directly. Core infrastructure like demo-eureka-server — it
+carries no 32-pattern catalog. Port 8081.

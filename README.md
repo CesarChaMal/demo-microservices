@@ -7,6 +7,7 @@ A comprehensive microservices architecture demonstration featuring multiple depl
 This project demonstrates a complete microservices ecosystem with:
 
 - **Service Discovery**: Netflix Eureka Server
+- **API Gateway**: Spring Cloud Gateway — single entry point routing to every service via Eureka (`lb://`)
 - **Multiple Technology Stacks**: Java (Spring Boot), Node.js (Express), Python (Flask), Go (chi)
 - **Pattern Catalog**: 32 canonical microservices patterns implemented per language (`JAVA-PATTERNS.md`, `NODE-PATTERNS.md`, `PYTHON-PATTERNS.md`, `GO-PATTERNS.md`)
 - **Database**: MySQL with connection pooling; Redis for the caching patterns
@@ -20,6 +21,7 @@ This project demonstrates a complete microservices ecosystem with:
 | Service | Technology | Port | Description |
 |---------|------------|------|-------------|
 | **Eureka Server** | Spring Boot | 8761 | Service discovery and registration |
+| **Gateway Service** | Spring Cloud Gateway + Java 22 | 8081 | Single entry point — routes `/<service>/**` to `lb://<SERVICE>` via Eureka |
 | **Java Service** | Spring Boot 3 + Java 22 | 8080 | REST API with database integration |
 | **Node Service** | Express.js + Node 22 | 3000 | Lightweight API service |
 | **Python Service** | Flask + Python 3.11 | 5001 | Data processing service |
@@ -63,6 +65,7 @@ run.bat docker
 
 **Service URLs:**
 - Eureka Dashboard: http://localhost:8761
+- Gateway (single entry point): http://localhost:8081 — e.g. `POST /java/process`, `GET /go/info`; route table at http://localhost:8081/actuator/gateway/routes
 - Java Service API: http://localhost:8080/swagger-ui.html
 - Node Service API: http://localhost:3000/api-docs
 - Python Service API: http://localhost:5001/apidocs
@@ -184,6 +187,7 @@ pyenv global 3.11
 ```yaml
 services:
   eureka-server:    # Service discovery
+  gateway-service:  # Spring Cloud Gateway (entry point, lb:// routes)
   java-service:     # Spring Boot API
   node-service:     # Express.js API
   python-service:   # Flask API
