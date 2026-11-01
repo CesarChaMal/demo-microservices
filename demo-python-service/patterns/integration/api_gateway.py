@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from flask import request
 import requests
 
+from discovery import peer_url
+
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -96,10 +98,14 @@ class APIGateway:
     
     def _forward_request(self, gateway_request: GatewayRequest, route: Route) -> Dict[str, Any]:
         """Forward request to target service"""
-        target_url = self.service_registry.get(route.target_service)
-        if not target_url:
+        fallback_url = self.service_registry.get(route.target_service)
+        if not fallback_url:
             return self._error_response(503, "Service unavailable")
-        
+
+        # Resolve the peer through Eureka at request time; the registry
+        # entry (compose service name = k8s Service name) is the fallback.
+        target_url = peer_url(route.target_service.upper(), fallback_url)
+
         # Build target URL
         target_path = route.target_path or gateway_request.path
         full_url = f"{target_url}{target_path}"

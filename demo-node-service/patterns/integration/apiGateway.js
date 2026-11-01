@@ -6,6 +6,7 @@
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
 const EventEmitter = require('events');
+const { peerUrl } = require('../../discovery');
 
 class Route {
     constructor(pathPattern, targetService, targetPath, methods, options = {}) {
@@ -123,10 +124,13 @@ class APIGateway extends EventEmitter {
     }
 
     async forwardRequest(gatewayRequest, route) {
-        const targetUrl = this.serviceRegistry[route.targetService];
-        if (!targetUrl) {
+        const fallbackUrl = this.serviceRegistry[route.targetService];
+        if (!fallbackUrl) {
             return this.errorResponse(503, 'Service unavailable');
         }
+        // Resolve the peer through Eureka at request time; the registry
+        // entry (compose service name = k8s Service name) is the fallback.
+        const targetUrl = peerUrl(route.targetService.toUpperCase(), fallbackUrl);
 
         const targetPath = route.targetPath || gatewayRequest.path;
         const fullUrl = `${targetUrl}${targetPath}`;
