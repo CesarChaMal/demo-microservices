@@ -150,6 +150,8 @@ demo-microservices/
 │   ├── handler.js / lambda_function.py / Handler.java
 │   └── deployment configs
 │
+├── docs/                          # Deployment & cost guides (DEPLOYMENT.md, PRICING.md)
+│
 ├── db/                            # Database initialization
 │   └── init/                      # 01-schema.sql + 02-seed.sql for MySQL setup
 │
@@ -2046,6 +2048,8 @@ If you encounter issues not covered here:
 - **CRITICAL-FIXES-COMPLETE.md** - Critical fixes completion report
 - **PATTERN-REVIEW-COMPLETE.md** - Pattern implementation review (canonical 32-pattern list)
 - **infra/README.md** - Which infrastructure stack is maintained, deprecated, or planned
+- **docs/DEPLOYMENT.md** - Full AWS EKS deployment walkthrough (prerequisites → create stack → CI deploy → verify → destroy)
+- **docs/PRICING.md** - What the running cluster costs per month, line by line, and how to cut it
 
 ### Scripts
 

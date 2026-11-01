@@ -56,9 +56,12 @@ build+push images at create time (same block the docker mode uses).
 
 ## Cost warning ⚠️
 
-An idle Fargate cluster is **not free**: the control plane bills ~$0.10/hour
-and every running pod bills vCPU+memory (7 pods ≈ $0.15–0.35/hour more). A
-day of demoing is a few dollars; a forgotten week is dozens. Teardown:
+An idle Fargate cluster is **not free**: the control plane bills **$0.50/hour**
+(the repo pins Kubernetes 1.31, past standard support since 2025-11-26 — the
+extended-support rate; $0.10/hour again once `cluster_version` is bumped) and
+every running pod bills vCPU+memory (7 pods ≈ $0.22/hour more; itemized idle
+total ≈ $19/day in [`docs/PRICING.md`](../../docs/PRICING.md)). A day of
+demoing is real money; a forgotten week is $100+. Teardown:
 
 ```bash
 # Delete k8s resources first so the NLB is released inside the cluster

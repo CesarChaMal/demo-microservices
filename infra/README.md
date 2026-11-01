@@ -45,6 +45,11 @@ via `MODE=eks ./create_stack.sh`). The one cloud object it indirectly creates
 is the gateway NLB, provisioned by AWS when the gateway's k8s `Service`
 (type LoadBalancer) is first applied.
 
+Its `push` trigger carries `paths-ignore` (`docs/**`, any `*.md`, and
+`deploy.yml` itself), so doc-only pushes — and deploy.yml-only CI fixes —
+do not kick off a 45-minute deploy against a cluster that may not exist.
+Deploy such pushes by hand with `gh workflow run deploy.yml`.
+
 ### GitHub Actions deploy identity (OIDC — no long-lived keys)
 
 `deploy.yml` authenticates with temporary credentials obtained by exchanging
@@ -86,8 +91,10 @@ aws iam delete-open-id-connect-provider \
 
 ## Teardown / cost safety
 
-Charges start only when you run `create_stack.sh` (EKS control plane ~$0.10/hr
-+ pods + NAT + NLB — see `eks/README.md`). To stop them:
+Charges start only when you run `create_stack.sh` (EKS control plane at the
+**$0.50/hr extended-support rate** — the repo pins Kubernetes 1.31, whose
+standard support ended 2025-11-26 — plus pods + NAT + NLB; full breakdown in
+[`docs/PRICING.md`](../docs/PRICING.md)). To stop them:
 
 ```bash
 ./scripts/destroy-aws.sh             # EKS stack (default) — the panic button

@@ -94,9 +94,10 @@ run.bat docker
 ./run.sh lambda
 
 # EKS — primary maintained path (Fargate-only cluster + one ECR repo per service)
-AWS_REGION=eu-west-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=eks ./create_stack.sh
+AWS_REGION=eu-central-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=eks ./create_stack.sh
 # then push to main: .github/workflows/deploy.yml builds/pushes all 7 images
-# and applies the k8s manifests — see infra/eks/README.md
+# and applies the k8s manifests — walkthrough in docs/DEPLOYMENT.md,
+# running costs in docs/PRICING.md, stack details in infra/eks/README.md
 ```
 
 > The legacy `./run.sh aws` (root `infra/` Terraform) is **deprecated** and now fails fast with a pointer. See `infra/README.md` for the status of every stack.
@@ -276,12 +277,12 @@ Eureka Server → Database → Application Services
 
 ### 3. AWS EKS (Fargate) — primary
 ```bash
-AWS_REGION=eu-west-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=eks ./create_stack.sh
+AWS_REGION=eu-central-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=eks ./create_stack.sh
 ```
 - Fargate-only cluster (no nodes to manage) + one ECR repo per service
 - k8s manifests in `infra/eks/k8s/` (rendered by `scripts/render-k8s.sh`)
 - CI/CD: `.github/workflows/deploy.yml` builds + pushes all 7 images and applies the manifests on push to main
-- Entry point: the gateway Service (NLB) — start at `infra/eks/README.md`
+- Entry point: the gateway Service (NLB) — step-by-step in `docs/DEPLOYMENT.md`, running costs in `docs/PRICING.md`, stack details in `infra/eks/README.md`
 
 ### 4. AWS Lambda
 ```bash
@@ -293,12 +294,6 @@ AWS_REGION=eu-west-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE
 
 ### 5. AWS ECS (deprecated)
 The legacy ECS stack (`infra/docker`) is deprecated and quarantined — `./run.sh aws` fails fast with a pointer. The maintained AWS paths are EKS (primary, above) and Lambda; see `infra/README.md`.
-```bash
-./run.sh lambda
-```
-- Serverless compute
-- Event-driven architecture
-- Cost-effective for sporadic workloads
 
 ## 📈 Scaling Considerations
 
