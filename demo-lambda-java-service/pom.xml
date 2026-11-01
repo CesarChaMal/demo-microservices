@@ -106,7 +106,7 @@
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <!-- Your Lambda handler class -->
-                  <mainClass>com.example.lambda.StreamLambdaHandler</mainClass>
+                  <mainClass>com.example.java_service.lambda.StreamLambdaHandler</mainClass>
                 </transformer>
               </transformers>
             </configuration>

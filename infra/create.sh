@@ -25,7 +25,8 @@ fi
 
 # S3 backend bucket for remote state
 BACKEND_BUCKET="aws-s3-bucket-state-$APP"
-BACKEND_KEY="terraform.tfstate"
+# Per-mode state key: docker and serverless stacks must not share state
+BACKEND_KEY="${MODE}/terraform.tfstate"
 BACKEND_REGION="$AWS_REGION"
 
 # Terraform root by mode
@@ -67,6 +68,14 @@ if [[ -f package.json ]]; then
 fi
 
 # -------------------------
+# Lambda artifacts (serverless mode)
+# -------------------------
+if [[ "$MODE" == "serverless" ]]; then
+  echo "Building Lambda deployment zips (scripts/build-lambda-zips.sh)..."
+  bash scripts/build-lambda-zips.sh
+fi
+
+# -------------------------
 # Terraform prepare
 # -------------------------
 pushd "$INFRA_ROOT" >/dev/null
@@ -97,10 +106,8 @@ EOF
 fi
 
 echo "Initializing Terraform backend..."
-terraform init -force-copy -backend-config=backend.hcl \
-  -var backend_bucket_name="$BACKEND_BUCKET" \
-  -var backend_bucket_key="$BACKEND_KEY" \
-  -var backend_bucket_region="$BACKEND_REGION"
+# backend.hcl carries bucket/key/region; no -var flags (those vars are not declared in the stacks)
+terraform init -force-copy -backend-config=backend.hcl
 
 # Workspace = environment (dev/stage/prod, etc.)
 if ! terraform workspace select "$ENV" 2>/dev/null; then

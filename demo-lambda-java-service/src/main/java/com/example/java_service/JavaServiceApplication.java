@@ -1,4 +1,4 @@
-package com.example;
+package com.example.java_service;
 
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 

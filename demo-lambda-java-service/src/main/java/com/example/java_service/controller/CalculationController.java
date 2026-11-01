@@ -1,4 +1,4 @@
-package com.example.controller;
+package com.example.java_service.controller;
 
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;

@@ -316,15 +316,18 @@ plus `::method`):
 
 | Service | Handler file | Correct handler string |
 |---|---|---|
-| Java | `demo-lambda-java-service/src/main/java/com/example/java_service/lambda/StreamLambdaHandler.java` | `com.example.lambda.StreamLambdaHandler::handleRequest` |
+| Java | `demo-lambda-java-service/src/main/java/com/example/java_service/lambda/StreamLambdaHandler.java` | `com.example.java_service.lambda.StreamLambdaHandler::handleRequest` |
 | Node | `demo-lambda-node-service/handler.js` (`exports.handler`) | `handler.handler` |
 | Python | `demo-lambda-python-service/lambda_function.py` (`lambda_handler`) | `lambda_function.lambda_handler` |
 
 Verify the string against the file before every `terraform apply` — and read the file's
-`package` line, not just its path: the Java handler sits under
-`src/main/java/com/example/java_service/lambda/` but declares `package com.example.lambda;`, so
-the handler string follows the **package** (`com.example.lambda.…`), not the directory. Lambda is
-the small-scale compute option; the primary AWS path is EKS (`infra/eks/` — see `infra/README.md`).
+`package` line, not just its path: for Java the handler is `package.Class::method`, and the
+`package` declaration must match the directory layout
+(`com/example/java_service/lambda/` ⇒ `package com.example.java_service.lambda;`). This repo
+historically shipped sources at `com/example/java_service/…` declaring `package com.example.lambda`
+— a layout/package mismatch that made the handler string silently wrong. Lambda is the
+small-scale compute option; the primary AWS path is EKS (`infra/eks/`, planned — see
+`infra/README.md`).
 
 ### Step 9 — Update the docs (registration points — guard rule applies)
 
