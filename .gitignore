@@ -91,9 +91,13 @@ ipch
 *.manifest
 *.cache
 .cmd
-.mvn
 .gradle
 .nupkg
+
+# NOTE: .mvn/ is intentionally NOT ignored — every Maven service commits its
+# .mvn/wrapper/maven-wrapper.properties (wrapper "only-script" mode needs it to
+# know which Maven to download; without it ./mvnw fails on a fresh checkout).
+# Only the downloaded wrapper jar would be ignorable, and none is committed.
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*

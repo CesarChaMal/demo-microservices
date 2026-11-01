@@ -116,6 +116,29 @@ services:
     networks:
       - micro_net
 
+  # API gateway (Spring Cloud Gateway). Single entry point: routes
+  # /java/**, /node/**, /python/**, /go/** to lb://<APPID> through Eureka
+  # (StripPrefix=1). Infrastructure like eureka-server, not a 32-pattern peer.
+  gateway-service:
+    build: ./demo-gateway-service
+    container_name: gateway-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${EUREKA_SERVER_URL}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/actuator/health | grep '\"status\":\"UP\"' >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - micro_net
+
   # Cache backing for the caching patterns (cache-aside, write-behind) and the
   # shared REDIS_URL env the java/node/python services read. Service name
   # `redis` is the hostname peers use: REDIS_URL=redis://redis:6379 (.env).

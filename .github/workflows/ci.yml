@@ -50,6 +50,8 @@ jobs:
             goal: test
           - dir: demo-eureka-server
             goal: test
+          - dir: demo-gateway-service
+            goal: test
           - dir: demo-simple-java-service
             goal: package -DskipTests
           - dir: demo-simple-eureka-server
@@ -167,6 +169,7 @@ jobs:
       matrix:
         service:
           - demo-eureka-server
+          - demo-gateway-service
           - demo-java-service
           - demo-node-service
           - demo-python-service

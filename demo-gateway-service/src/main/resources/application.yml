@@ -1,0 +1,64 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: gateway-service
+  cloud:
+    gateway:
+      routes:
+        - id: java-service
+          uri: lb://JAVA-SERVICE
+          predicates:
+            - Path=/java/**
+          filters:
+            - StripPrefix=1
+        - id: node-service
+          uri: lb://NODE-SERVICE
+          predicates:
+            - Path=/node/**
+          filters:
+            - StripPrefix=1
+        - id: python-service
+          uri: lb://PYTHON-SERVICE
+          predicates:
+            - Path=/python/**
+          filters:
+            - StripPrefix=1
+        - id: go-service
+          uri: lb://GO-SERVICE
+          predicates:
+            - Path=/go/**
+          filters:
+            - StripPrefix=1
+
+eureka:
+  client:
+    service-url:
+      # Compose passes EUREKA_CLIENT_SERVICEURL_DEFAULTZONE (Spring relaxed binding);
+      # the default is the bare-local address so the gateway also runs outside Docker.
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # /actuator/gateway/routes shows every route and its resolved lb:// target —
+        # the fastest way to debug "is the gateway seeing Eureka?"
+        include: "health,info,gateway"
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+info:
+  app:
+    name: gateway-service
+    description: Spring Cloud Gateway — single entry point for the demo services
+    version: 1.0.0
