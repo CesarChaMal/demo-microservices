@@ -1,6 +1,6 @@
 package com.example.java_service.patterns.transaction;
 
-import javax.persistence.*;
+import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.Map;
 

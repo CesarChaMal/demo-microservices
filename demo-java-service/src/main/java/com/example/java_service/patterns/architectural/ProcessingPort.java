@@ -5,10 +5,6 @@ public interface ProcessingPort {
     ProcessingResult process(ProcessingRequest request);
 }
 
-// Domain Models
-record ProcessingRequest(Integer value, String type) {}
-record ProcessingResult(Integer result, String status, String algorithm) {}
-
 // Domain Service (Core Business Logic)
 @org.springframework.stereotype.Service
 class ProcessingService implements ProcessingPort {

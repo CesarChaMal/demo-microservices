@@ -1,6 +1,6 @@
 package com.example.java_service.controller;
 
-import com.example.java_service.cache.CacheAsideService;
+import com.example.java_service.patterns.caching.CacheAsideService;
 import com.example.java_service.lock.RedisDistributedLock;
 import com.example.java_service.ratelimit.TokenBucketRateLimiter;
 import com.example.java_service.dto.ValueRequest;
@@ -58,7 +58,7 @@ public class AdvancedPatternsController {
     public ResponseEntity<Map<String, Object>> processWithCache(@Valid @RequestBody ValueRequest request) {
         String cacheKey = "cached:" + request.getValue();
         
-        Map<String, Object> result = cacheService.get(cacheKey, Map.class, () -> {
+        Map<String, Object> result = cacheService.get(cacheKey, () -> {
             // Simulate expensive computation
             try {
                 Thread.sleep(500);
