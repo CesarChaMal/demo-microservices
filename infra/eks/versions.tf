@@ -10,8 +10,10 @@ terraform {
     aws = {
       source = "hashicorp/aws"
       # Raised from the repo baseline (>= 5.0) because the EKS module 21.x
-      # requires a newer AWS provider than 5.0.
-      version = ">= 5.70.0"
+      # requires >= 5.70 — and to the 6.x floor because provider 6.0 renamed
+      # aws_eks_access_entry's `username` argument to `user_name`, and this
+      # stack uses the 6.x spelling (would fail schema validation on 5.x).
+      version = ">= 6.0.0"
     }
   }
 }
