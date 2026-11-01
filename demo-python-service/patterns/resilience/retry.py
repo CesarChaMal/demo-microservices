@@ -29,6 +29,20 @@ class RetryService:
         
         raise last_exception
 
+    def custom_retry(self, func: Callable, max_attempts: int = 3, delay: float = 1.0) -> Any:
+        """Retry an arbitrary call with a per-call attempt budget."""
+        last_exception = None
+        wait = delay
+        for attempt in range(max_attempts):
+            try:
+                return func()
+            except Exception as e:
+                last_exception = e
+                if attempt < max_attempts - 1:
+                    time.sleep(wait)
+                    wait *= self.config.backoff_multiplier
+        raise last_exception
+
 # Decorator-based retry
 @retry(stop_max_attempt_number=3, wait_exponential_multiplier=1000, wait_exponential_max=10000)
 def unreliable_service_call(data):
@@ -70,3 +84,5 @@ class SmartRetryService:
             return self.retry_service.execute_with_retry(_process)
         except Exception as e:
             return {"error": str(e), "result": data["value"], "retried": False}
+# Shared instance used by the /process-with-retry route in app.py
+retry_service = RetryService()

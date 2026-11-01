@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js",
-    "test": "node --test tests/"
+    "test": "node --test tests/*.test.js"
   },
   "keywords": [],
   "author": "",
@@ -47,9 +47,6 @@
     "nodemon": "^3.0.1",
     "cors": "^2.8.5",
     "http-proxy-middleware": "^2.0.6",
-    "crypto": "^1.0.1",
-    "os": "^0.1.2",
-    "worker_threads": "^1.0.0",
     "rxjs": "^7.8.1",
     "p-queue": "^7.4.1",
     "lru-cache": "^10.0.1",

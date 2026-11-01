@@ -1,6 +1,7 @@
 package resilience
 
 import (
+	"encoding/json"
 	"errors"
 	"math/rand"
 	"net/http"
