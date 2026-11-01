@@ -40,18 +40,24 @@ jobs:
     name: Build, push, apply
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # `secrets` is NOT available in a step-level `if:` — a workflow that uses
+    # it there fails to compile entirely (instant failure, zero jobs started).
+    # Job-level env CAN read secrets, and `env` IS legal in step conditions,
+    # so the secret check is routed through this variable.
+    env:
+      HAS_DEPLOY_ROLE: ${{ secrets.AWS_DEPLOY_ROLE_ARN != '' }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Configure AWS credentials (OIDC — preferred)
-        if: ${{ secrets.AWS_DEPLOY_ROLE_ARN != '' }}
+        if: env.HAS_DEPLOY_ROLE == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Configure AWS credentials (static keys — fallback)
-        if: ${{ secrets.AWS_DEPLOY_ROLE_ARN == '' }}
+        if: env.HAS_DEPLOY_ROLE == 'false'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
