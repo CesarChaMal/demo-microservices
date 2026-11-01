@@ -66,8 +66,13 @@ jobs:
 
       - name: Resolve account + registry
         run: |
-          echo "AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)" >> "$GITHUB_ENV"
-          echo "REGISTRY=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com" >> "$GITHUB_ENV"
+          # GITHUB_ENV writes only land in LATER steps — AWS_ACCOUNT_ID is not
+          # a shell var yet on the next line. Capture it locally first, or
+          # REGISTRY renders as ".dkr.ecr…" with no account prefix (the ECR
+          # login then targets a host that doesn't exist).
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          echo "AWS_ACCOUNT_ID=$ACCOUNT_ID" >> "$GITHUB_ENV"
+          echo "REGISTRY=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com" >> "$GITHUB_ENV"
           echo "TAG=sha-${GITHUB_SHA::7}" >> "$GITHUB_ENV"
 
       - name: Point kubectl at the cluster
