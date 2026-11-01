@@ -78,6 +78,30 @@ jobs:
       - name: Point kubectl at the cluster
         run: aws eks update-kubeconfig --region "$AWS_REGION" --name "$CLUSTER_NAME"
 
+      - name: Ensure namespace exists and is Active
+        run: |
+          # The render stream creates the namespace and the objects inside it
+          # in ONE `kubectl apply -f -`. EKS fronts several API-server
+          # replicas, and each replica's admission check uses its own cache:
+          # a create that lands on a replica that hasn't observed the new
+          # namespace yet fails with `namespaces "..." not found` even though
+          # the namespace was created a request earlier. Create it here and
+          # wait for status.phase=Active (set by the namespace controller
+          # after every replica's watch has delivered it) so the big apply
+          # races nothing.
+          kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+          for _ in $(seq 1 30); do
+            phase="$(kubectl get namespace "$NAMESPACE" -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+            if [ "$phase" = "Active" ]; then
+              echo "namespace $NAMESPACE is Active"
+              exit 0
+            fi
+            echo "namespace $NAMESPACE phase: ${phase:-<none>} — waiting"
+            sleep 2
+          done
+          echo "namespace $NAMESPACE never reached Active within 60s"
+          exit 1
+
       - name: Login to ECR
         run: aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$REGISTRY"
 
@@ -90,10 +114,12 @@ jobs:
             if ! docker build -t "$REPO:$TAG" -t "$REPO:latest" "demo-$SVC"; then
               echo "BUILD FAILED: demo-$SVC"; status=1; continue
             fi
-            # ECR tags are IMMUTABLE — a re-run of the same commit pushes an
-            # identical tag name; that push fails, which is fine.
+            # ECR tags are IMMUTABLE — pushing a tag name that already exists
+            # fails. sha tags collide only on re-runs of the same commit;
+            # latest collides on EVERY later run once pushed once. The sha tag
+            # is what the manifests pin, so a bounced latest is not fatal.
             docker push "$REPO:$TAG" || echo "(sha tag already present — immutable ECR, skipping)"
-            docker push "$REPO:latest"
+            docker push "$REPO:latest" || echo "(latest already present — immutable ECR, skipping)"
           done
           exit $status
 
