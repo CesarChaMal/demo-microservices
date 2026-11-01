@@ -1,7 +1,7 @@
 Flask==3.0.0
 Werkzeug==3.0.1
 py_eureka_client==0.9.9
-flasgger==0.9.7
+flasgger==0.9.7.1
 
 # Resilience Patterns
 circuitbreaker==1.4.0
@@ -21,9 +21,10 @@ celery==5.3.4
 
 # Async & Reactive
 aiohttp>=3.12.14
-aioredis==2.0.1
-rx==4.0.4
-asyncio==3.4.3
+# (rx/asyncio removed: RxPY 4.x ships as `reactivex`, `rx` stops at 3.2.0;
+#  asyncio is stdlib — the PyPI shims were py2 fossils that don't install)
+# (aioredis removed: abandoned, merged into redis-py — use `redis.asyncio`;
+#  2.0.1 is import-broken on Python 3.11+ and nothing in the repo imports it)
 
 # Monitoring & Tracing
 prometheus-client==0.19.0
@@ -53,7 +54,6 @@ typing-extensions==4.8.0
 click==8.1.7
 gunicorn==21.2.0
 APScheduler==3.10.4
-uuid==1.30
 dataclasses-json==0.6.3
 python-dotenv==1.0.0
 
