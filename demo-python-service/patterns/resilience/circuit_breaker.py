@@ -102,7 +102,12 @@ class ExternalServiceClient:
             recovery_timeout=20,
             expected_exception=requests.RequestException
         )
-    
+        self.go_service_breaker = PythonCircuitBreaker(
+            failure_threshold=3,
+            recovery_timeout=20,
+            expected_exception=requests.RequestException
+        )
+
     @circuit(failure_threshold=5, recovery_timeout=30, expected_exception=requests.RequestException)
     def call_java_service(self, data: Dict[str, Any]) -> Dict[str, Any]:
         try:
@@ -132,7 +137,22 @@ class ExternalServiceClient:
         except requests.RequestException as e:
             logger.error(f"Node service call failed: {e}")
             return self._node_service_fallback(data, e)
-    
+
+    @circuit(failure_threshold=3, recovery_timeout=20, expected_exception=requests.RequestException)
+    def call_go_service(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        try:
+            response = requests.post(
+                'http://go-service:5002/process',
+                json=data,
+                timeout=5,
+                headers={'Content-Type': 'application/json'}
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            logger.error(f"Go service call failed: {e}")
+            return self._go_service_fallback(data, e)
+
     def _java_service_fallback(self, data: Dict[str, Any], error: Exception) -> Dict[str, Any]:
         return {
             'result': data.get('value', 0) * 2,
@@ -150,11 +170,21 @@ class ExternalServiceClient:
             'error': str(error),
             'pattern': 'circuit-breaker-fallback'
         }
-    
+
+    def _go_service_fallback(self, data: Dict[str, Any], error: Exception) -> Dict[str, Any]:
+        return {
+            'result': data.get('value', 0) * 2,
+            'source': 'fallback',
+            'service': 'go-service',
+            'error': str(error),
+            'pattern': 'circuit-breaker-fallback'
+        }
+
     def get_circuit_breaker_stats(self) -> Dict[str, Any]:
         return {
             'java_service': self.java_service_breaker.get_stats() if hasattr(self.java_service_breaker, 'get_stats') else {'state': 'UNKNOWN'},
-            'node_service': self.node_service_breaker.get_stats() if hasattr(self.node_service_breaker, 'get_stats') else {'state': 'UNKNOWN'}
+            'node_service': self.node_service_breaker.get_stats() if hasattr(self.node_service_breaker, 'get_stats') else {'state': 'UNKNOWN'},
+            'go_service': self.go_service_breaker.get_stats() if hasattr(self.go_service_breaker, 'get_stats') else {'state': 'UNKNOWN'}
         }
 
 class RetryService:

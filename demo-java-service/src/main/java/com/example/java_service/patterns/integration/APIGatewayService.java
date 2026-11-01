@@ -13,6 +13,7 @@ public class APIGatewayService {
         routes.put("/api/java/**", "java-service");
         routes.put("/api/python/**", "python-service");
         routes.put("/api/node/**", "node-service");
+        routes.put("/api/go/**", "go-service");
     }
     
     public String routeRequest(String path) {

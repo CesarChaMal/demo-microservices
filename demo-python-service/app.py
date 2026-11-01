@@ -568,7 +568,7 @@ def check_event_processor():
 
 def check_external_services():
     # Simulate external service check
-    return {'healthy': True, 'services': ['java-service', 'node-service']}
+    return {'healthy': True, 'services': ['java-service', 'node-service', 'go-service']}
 
 health_service.add_check('circuit-breakers', check_circuit_breakers, critical=True)
 health_service.add_check('cache', check_cache, critical=True)
@@ -793,7 +793,7 @@ def process():
                 'type': 'object',
                 'properties': {
                     'value': {'type': 'number'},
-                    'service': {'type': 'string', 'enum': ['java', 'node']}
+                    'service': {'type': 'string', 'enum': ['java', 'node', 'go']}
                 },
                 'required': ['value']
             }
@@ -808,6 +808,8 @@ def process_with_circuit_breaker():
         
         if service == 'java':
             result = external_service_client.call_java_service({'value': value})
+        elif service == 'go':
+            result = external_service_client.call_go_service({'value': value})
         else:
             result = external_service_client.call_node_service({'value': value})
         

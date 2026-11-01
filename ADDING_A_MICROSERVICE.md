@@ -14,8 +14,8 @@
 
 | Family | Directory pattern | What it contains | Examples |
 |---|---|---|---|
-| **Full** | `demo-<lang>-service` | The full contract + all 32 design patterns + Eureka registration + peer wiring | `demo-java-service`, `demo-node-service`, `demo-python-service` |
-| **Simple** | `demo-simple-<lang>-service` | Contract only (`/info`, `/process`) + Eureka registration — the minimal "hello world" tier | `demo-simple-java-service`, `demo-simple-node-service`, `demo-simple-python-service` |
+| **Full** | `demo-<lang>-service` | The full contract + all 32 design patterns + Eureka registration + peer wiring | `demo-java-service`, `demo-node-service`, `demo-python-service`, `demo-go-service` |
+| **Simple** | `demo-simple-<lang>-service` | Contract only (`/info`, `/process`) + Eureka registration — the minimal "hello world" tier | `demo-simple-java-service`, `demo-simple-node-service`, `demo-simple-python-service`, `demo-simple-go-service` |
 | **Lambda** | `demo-lambda-<lang>-service` | Handler-only packaging for AWS Lambda, deployed via `infra/serverless` | `demo-lambda-java-service`, `demo-lambda-node-service`, `demo-lambda-python-service` |
 
 `demo-eureka-server` is the Netflix Eureka discovery server everything registers with
@@ -31,23 +31,26 @@
 | 5001 | `demo-python-service` | in use |
 | 3306 | MySQL (`mysql:8.0`) | in use |
 | 8081 | `demo-gateway-service` (API gateway) | reserved |
-| 5002 | `demo-go-service` | reserved |
+| 5002 | `demo-go-service` | in use |
 | 5003 | `demo-dotnet-service` | reserved |
-| 6379 | Redis | reserved |
+| 6379 | Redis (`redis:7-alpine`) | in use |
 | 5672 / 15672 | RabbitMQ (amqp / management UI) | reserved |
 
-Taking a reserved port? Update this table in the same commit.
+Taking a reserved port? Update this table in the same commit. Simple-family services aren't
+listed — they're not wired into docker-compose and only occupy a port when run bare (typically
+the full service's port, with the full service stopped).
 
 ### The service contract
 
-Every service — every family, every language — implements:
+Every service — every family, every language — implements the two contract endpoints; the full
+family implements all four:
 
 | Endpoint | Behavior |
 |---|---|
-| `GET /info` | Service metadata (name, language, version, pattern count) |
-| `GET /health` | Liveness. Java uses Spring Actuator: `GET /actuator/health` |
-| `GET /metrics` | Pattern/metrics summary (full family) |
+| `GET /info` | Service metadata — exact shapes pinned in Step 2 (full and simple differ) |
 | `POST /process` `{"value": <number>}` | **The interop contract:** returns `{"result": value * 2}` |
+| `GET /health` | Liveness (full family; simple family only if it registers a `healthCheckUrl` — Step 4b). Java uses Spring Actuator: `GET /actuator/health` |
+| `GET /metrics` | Pattern/metrics summary (full family) |
 
 `POST /process` is the one endpoint peers call through — Feign from Java, direct HTTP from
 Node/Python. `value * 2` must hold across every implementation or the demo's cross-service
@@ -56,12 +59,15 @@ narrative breaks.
 ### Who talks to whom (as built today)
 
 - **Java** discovers peers via **Eureka + Spring Cloud OpenFeign**
-  (`demo-java-service/.../client/NodeServiceClient.java`), wrapped in resilience4j
-  `@CircuitBreaker` / `@Retry`.
+  (`demo-java-service/.../client/NodeServiceClient.java`, `GoServiceClient.java`), wrapped in
+  resilience4j `@CircuitBreaker` / `@Retry`, invoked from `EnterpriseController`.
 - **Node and Python call peers by Docker Compose hostname directly**
-  (`http://java-service:8080`, `http://python-service:5001`) — Node via the registry in
-  `demo-node-service/patterns/integration/apiGateway.js`, Python via the URL constants in
-  `ExternalServiceClient` (`demo-python-service/patterns/resilience/circuit_breaker.py`).
+  (`http://java-service:8080`, `http://python-service:5001`, `http://go-service:5002`) — Node
+  via the registry in `demo-node-service/patterns/integration/apiGateway.js`, Python via
+  `ExternalServiceClient` (`demo-python-service/patterns/resilience/circuit_breaker.py`) and
+  the registry in `demo-python-service/patterns/integration/api_gateway.py`. Asymmetry to
+  copy: Java is called at its `/calculate` route (its API-gateway pattern), everyone else at
+  `/process`.
 
 > **Known limitation:** Node/Python don't use Eureka *discovery* — they hardcode compose
 > hostnames. Works on `micro_net`, breaks outside Docker. A later change moves them to real
@@ -119,17 +125,34 @@ Full family mirrors the layout of an existing full service (patterns separated i
 
 ### Step 2 — Implement the contract
 
-All four endpoints from §0, `POST /process` returning `value * 2` exactly. Copy the response
-*shape* from an existing service in another language — the demo's point is that the JSON is
-interchangeable.
+The endpoints your family owes (§0), `POST /process` returning `value * 2` exactly. Copy the
+response *shape* from an existing service in another language — the demo's point is that the
+JSON is interchangeable. `/info` shapes (from `demo-go-service/main.go` and
+`demo-simple-go-service/main.go`):
+
+```json
+// full family
+{"app": "go-service", "status": "running", "version": "1.0.0",
+ "timestamp": "2026-01-01T00:00:00Z", "patterns": ["circuit-breaker", "retry", "…"]}
+// simple family — {"app", "status"} only
+{"app": "go-service", "status": "running"}
+```
+
+`patterns` is the ordered kebab-case slug list (same order as your `<LANG>-PATTERNS.md`);
+extra keys beyond these are fine — java/node/python each add a few.
 
 ### Step 3 — Write the Dockerfile
 
 - Multi-stage when the toolchain allows (build stage → slim runtime; `golang:*-alpine` →
   distroless is the best case; `node:*-alpine` and `python:*-slim` single-stage are fine).
 - Pin the base image tag.
-- The image must contain `curl` or `wget` **if** you use the compose healthcheck from Step 5
-  (distroless images don't — use a different probe there, e.g. a `/health`-checking exec).
+- The image must contain `curl` or `wget` **if** you use the HTTP compose healthcheck from
+  Step 5. Distroless images ship neither — compile a tiny probe binary and exec it instead
+  (`demo-go-service/internal/healthcheck/main.go` → compose `test: ["CMD", "/app/healthcheck"]`).
+- Go multi-stage: copy the **full source before `go mod tidy`** — intra-module imports
+  (`patterns/*`, `internal/*`) must resolve or tidy strips your router from `go.mod`. The
+  alternative is committing `go.sum` and using `go mod download`. Rationale comment lives in
+  `demo-go-service/Dockerfile`.
 - WSL2 note: builds reading the context from `/mnt/f` (9p filesystem) are slow. That's
   environmental — let the build finish or retry it; don't change the Dockerfile to chase it.
 
@@ -144,6 +167,7 @@ The existing services disagree on the env var name — don't inherit that confus
 | `demo-node-service` | `EUREKA_SERVER_HOST` | `localhost` (breaks in Docker) |
 | `demo-simple-node-service` | `EUREKA_HOST` | `eureka-server` |
 | `demo-python-service` | — hardcoded `http://eureka-server:8761/eureka/` | (breaks bare-local) |
+| `demo-go-service` | `EUREKA_SERVER_URL` | `http://eureka-server:8761/eureka/` |
 
 #### 4a — With a client library
 
@@ -151,8 +175,8 @@ Reference implementations to copy from:
 
 - **Java:** `demo-java-service/src/main/resources/application.yml` — `eureka.client.*` block.
   The compose file passes `EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=${EUREKA_SERVER_URL}`.
-- **Node:** `demo-node-service/app.js` (~line 830) — `eureka-js-client` instance config.
-  Set `EUREKA_SERVER_HOST=eureka-server` in your compose block.
+- **Node:** `demo-node-service/app.js` (~line 838, `new Eureka({...})`) — `eureka-js-client`
+  instance config. Set `EUREKA_SERVER_HOST=eureka-server` in your compose block.
 - **Python:** `demo-python-service/app.py` `register_with_eureka()` (~line 1367) — `py_eureka_client`.
   Prefer an env-var override over the existing hardcode.
 
@@ -170,7 +194,15 @@ Eureka is just HTTP. Spring's server serves these endpoints (some docs use the A
 
 Rules: `APPID` is **UPPERCASE** (`GO-SERVICE`); send `Content-Type: application/json` and
 `Accept: application/json`; if `healthCheckUrl` is unreachable from the Eureka container, the
-instance is marked DOWN — put the compose hostname in URLs, not `localhost`.
+instance is marked DOWN — put the compose hostname in URLs, not `localhost`. Two conventions
+the Go services establish:
+
+- **Shutdown order:** stop the heartbeat loop **first**, then `DELETE` the registration —
+  otherwise a heartbeat can race the deregister and re-create the lease. See
+  `demo-go-service/main.go` (`StopHeartbeats()` runs before `Deregister()`).
+- **Simple family registers the same APPID as the full service** — `demo-simple-go-service`
+  also registers `GO-SERVICE` — and serves `/health` (one endpoint beyond the simple
+  contract) because its `healthCheckUrl` must answer or Eureka marks it DOWN.
 
 Instance document:
 
@@ -241,8 +273,8 @@ type Instance struct {
     ports:
       - "5002:5002"
     environment:
+      # pass the env var(s) YOUR service reads (Step 4 table) — typically just one
       - EUREKA_SERVER_URL=${EUREKA_SERVER_URL}
-      - EUREKA_SERVER_HOST=eureka-server   # ← your language's var from the Step 4 table
     networks:
       - micro_net
     depends_on:
@@ -260,8 +292,10 @@ type Instance struct {
 The timing values mirror the existing Java/Eureka blocks, which probe their Actuator endpoint:
 `["CMD-SHELL", "curl -fsS http://localhost:<port>/actuator/health | grep '"status":"UP"' >/dev/null"]`.
 Probe **your own contract endpoint** instead (`/health` for non-actuator services — the
-`["CMD", "curl", "-fsS", …]` form above). Node/Python currently ship no compose healthcheck at
-all, so your block sets the example.
+`["CMD", "curl", "-fsS", …]` form above). Distroless runtimes have no shell/curl: exec a
+compiled probe instead — `test: ["CMD", "/app/healthcheck"]`, built from
+`demo-go-service/internal/healthcheck/main.go`. Node/Python currently ship no compose
+healthcheck at all, so your block sets the example.
 
 ### Step 6 — `.env` / `.env.security` entries
 
@@ -275,8 +309,8 @@ pattern).
 A new service isn't part of the demo until the existing ones can reach it:
 
 **Java (required):** in `demo-java-service/src/main/java/com/example/java_service/client/`,
-copy `NodeServiceClient.java` + `NodeServiceClientFallback.java` and rename for your
-service — keeping the shape:
+copy `NodeServiceClient.java` + `NodeServiceClientFallback.java` (or the smaller
+`GoServiceClient.java` pair) and rename for your service — keeping the shape:
 
 ```java
 @FeignClient(name = "go-service", fallback = GoServiceClientFallback.class,
@@ -285,25 +319,46 @@ public interface GoServiceClient {
     @PostMapping("/process")
     @CircuitBreaker(name = "go-service")   // resilience4j instance must exist (below)
     @Retry(name = "go-service")
-    ProcessResponse process(...);
+    Map<String, Object> process(@RequestBody Map<String, Object> request);
+
+    @GetMapping("/info")                    // peer metadata is part of the wiring
+    Map<String, Object> getInfo();
 }
 ```
 
-Then add a matching resilience4j instance block named `go-service` in
-`demo-java-service/src/main/resources/application.yml` (copy the `node-service` block —
-circuit-breaker + retry + timeout settings). `FeignConfiguration.class` already exists in the
-same package — reuse it.
+Real clients return `Map<String, Object>` (no per-peer DTO), declare `GET /info` alongside
+`POST /process`, and the fallback implements both. Then:
 
-**Node (required):** in `demo-node-service/app.js` — add your URL constant next to the
-existing peer constants; add a health indicator alongside the existing ones (~lines 156–157);
-register the route in `demo-node-service/patterns/integration/apiGateway.js`
-`serviceRegistry` (`'go-service': 'http://go-service:5002'`).
+1. Add a matching resilience4j instance block named `<your-service>` in
+   `demo-java-service/src/main/resources/application.yml` — copy the existing `go-service`
+   or `node-service` block (circuit-breaker + retry + timeout + bulkhead instances).
+   `FeignConfiguration.class` already exists in the same package — reuse it.
+2. **Wire it into a call site** — the interface alone does nothing. Add the client to
+   `EnterpriseController`'s constructor and call it from a route (see the
+   `goResult`/`goInfo` entries there).
 
-**Python (required):** add your URL constant to `ExternalServiceClient` in
-`demo-python-service/patterns/resilience/circuit_breaker.py`, next to the existing
-`http://java-service:8080/calculate` / `http://node-service:3000/process` constants — that is
-where Python's peer calls actually live. (`app.py` only delegates to `ExternalServiceClient`;
-its `check_external_services()` health entry is a simulated stub that makes no real call.)
+**Node (required):** three registration points (there is no standalone URL-constants block —
+URLs live where they're used):
+
+1. Health indicator in `demo-node-service/app.js` (~lines 156–158, the
+   `ExternalServiceHealthIndicator` rows) plus a `healthService.addCheck('<your-service>', …)`
+   entry (~lines 163–165).
+2. Gateway registry in `demo-node-service/patterns/integration/apiGateway.js`
+   `serviceRegistry` (`'go-service': 'http://go-service:5002'`).
+3. If Node should call you under a circuit breaker, the outbound `axios.post` lives in
+   `demo-node-service/patterns/resilience/circuitBreaker.js`.
+
+**Python (required):** two registration points:
+
+1. `ExternalServiceClient` in `demo-python-service/patterns/resilience/circuit_breaker.py` —
+   add a `call_<your>_service()` method next to `call_go_service()`
+   (`http://go-service:5002/process`). Note the asymmetry: Java is called at `/calculate`
+   (its API-gateway pattern route), Node/Go at `/process`.
+2. The gateway registry in `demo-python-service/patterns/integration/api_gateway.py`
+   `service_registry` (`'go-service': 'http://go-service:5002'`).
+
+(`app.py` only delegates to `ExternalServiceClient`; its `check_external_services()` health
+entry is a simulated stub that makes no real call.)
 
 **Simple/Lambda families:** skip this step — they don't participate in peer calls.
 
@@ -332,7 +387,7 @@ small-scale compute option; the primary AWS path is EKS (`infra/eks/`, planned �
 ### Step 9 — Update the docs (registration points — guard rule applies)
 
 - `CLAUDE.md` — service table row, pattern count, any new infra
-- `README.md` — service list row + mention in the quick-start table
+- `README.md` — service table row + Service-URLs line (+ simplified-services note if simple)
 - **`<LANG>-PATTERNS.md`** (full family) — same 32 canonical headings as the other services:
 
   > Circuit Breaker · Retry · Bulkhead · Rate Limiting · Cache-Aside · Event Sourcing · CQRS ·
@@ -350,6 +405,10 @@ small-scale compute option; the primary AWS path is EKS (`infra/eks/`, planned �
   the ten categories: resilience, caching, messaging, transaction, architectural, integration,
   deployment, performance, monitoring, security. `pattern-gap-analysis.sh` diffs against this
   list (the script is being realigned to it — until then, diff manually).
+
+  Pattern-exposure convention (full family): index at `GET /api/patterns`, one route per
+  pattern at `GET /api/patterns/<kebab-name>` — see `demo-go-service/main.go`
+  (`"GET /api/patterns/{kebab-name}"`).
 
 ### Step 10 — Verify
 
@@ -371,7 +430,7 @@ curl http://localhost:5002/health && curl http://localhost:5002/metrics
 | # | Change | New/existing | Mandatory |
 |---|---|---|---|
 | 1 | `demo-<lang>-service/` (Dockerfile, README.md, info.txt, source) | new | ✅ all families |
-| 2 | `docker-compose.yml` service block | existing | ✅ all families |
+| 2 | `docker-compose.yml` service block | existing | ✅ full family (simple/lambda aren't composed) |
 | 3 | `.env.security` (+ local `.env`) entry | existing | if new URLs |
 | 4 | Java: `<Service>Client.java` + fallback + resilience4j instance | existing | full ✅ |
 | 5 | Node: URL constant + health indicator + `apiGateway.js` registry | existing | full ✅ |

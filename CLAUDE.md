@@ -25,8 +25,8 @@ This is a **comprehensive microservices architecture demonstration** featuring:
 
 - **Purpose**: Educational and demonstration repository showcasing production-ready microservices patterns
 - **Architecture**: Polyglot microservices with service discovery, multiple deployment strategies, and cloud-native patterns
-- **Scale**: 11 services (4 full-featured + 4 simplified + 3 serverless), 42+ microservices patterns
-- **Languages**: Java, Node.js, Python
+- **Scale**: 13 services (5 full-featured + 5 simplified + 3 serverless), 32 canonical microservices patterns
+- **Languages**: Java, Node.js, Python, Go
 - **Deployment**: Docker Compose, Local Development, AWS ECS, AWS Lambda
 
 ### Core Services
@@ -37,6 +37,7 @@ This is a **comprehensive microservices architecture demonstration** featuring:
 | **demo-java-service** | Spring Boot 3.3.1, Java 22 | 8080 | Full-featured Java microservice with 30+ patterns |
 | **demo-node-service** | Express 4.21.1, Node 20 | 3000 | Full-featured Node.js microservice with 38+ patterns |
 | **demo-python-service** | Flask 3.0.0, Python 3.11 | 5001 | Full-featured Python microservice with 36+ patterns |
+| **demo-go-service** | net/http, Go 1.22 | 5002 | Full-featured Go microservice with 32 patterns |
 | **mysql** | MySQL 8.0 | 3306 | Persistent data storage with health checks |
 
 ### Simplified Services
@@ -45,6 +46,7 @@ This is a **comprehensive microservices architecture demonstration** featuring:
 - `demo-simple-java-service`: Minimal Java service for comparison
 - `demo-simple-node-service`: Minimal Node.js service
 - `demo-simple-python-service`: Minimal Python service
+- `demo-simple-go-service`: Minimal Go service (standard library only)
 
 ### Lambda Functions
 
@@ -116,6 +118,11 @@ demo-microservices/
 │   ├── Dockerfile
 │   └── requirements.txt           # pip dependencies
 │
+├── demo-go-service/               # Full Go Microservice (port 5002)
+│   ├── main.go                    # Router, contract endpoints, Eureka wiring
+│   ├── internal/                  # eureka/ (REST client), healthcheck/ (probe binary)
+│   └── patterns/                  # Same category structure as Java/Node/Python
+│
 ├── demo-simple-*/                 # Simplified versions (minimal patterns)
 │
 ├── demo-lambda-*/                 # Serverless functions
@@ -173,6 +180,7 @@ All full-featured services organize patterns into **10 categories**:
 | **Java** | Spring Boot | 3.3.1 | Spring Cloud 2023.0.2, JPA, Spring Security |
 | **Node.js** | Express | 4.21.1 | Eureka JS Client, Swagger, Helmet |
 | **Python** | Flask | 3.0.0 | py-eureka-client, Flasgger, SQLAlchemy |
+| **Go** | chi router | v5 | net/http, Eureka over raw REST (`internal/eureka`) |
 
 ### Runtime Versions
 
@@ -1499,6 +1507,7 @@ Detailed pattern documentation is available in:
 - **`JAVA-PATTERNS.md`** - Java implementations with Spring Boot (16KB, 32 patterns)
 - **`NODE-PATTERNS.md`** - Node.js implementations with Express (33KB, 38 patterns)
 - **`PYTHON-PATTERNS.md`** - Python implementations with Flask (55KB, 36 patterns)
+- **`GO-PATTERNS.md`** - Go implementations with chi (32 patterns, one file per pattern)
 
 Each file includes:
 - Pattern theory and use cases

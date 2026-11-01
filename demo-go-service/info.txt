@@ -1,0 +1,4 @@
+go mod tidy
+go run .
+curl -v -X POST http://localhost:5002/process -H "Content-Type: application/json" -d "{\"value\": 10}"
+curl -v http://localhost:5002/info

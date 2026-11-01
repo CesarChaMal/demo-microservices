@@ -1,0 +1,11 @@
+-- run the microservice (standard library only, no dependencies to fetch)
+go run main.go
+
+-- or build and run the static binary
+go build -o go-simple-service .
+./go-simple-service
+
+-- bare-local run: point the eureka client at localhost
+EUREKA_SERVER_URL=http://localhost:8761/eureka/ PORT=5002 go run main.go
+
+curl -v -X POST http://localhost:5002/process -H "Content-Type: application/json" -d "{\"value\": 10}"
