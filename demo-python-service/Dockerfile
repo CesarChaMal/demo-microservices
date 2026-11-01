@@ -1,5 +1,8 @@
 # Use an official Python runtime as a parent image, specifying the exact version to ensure consistency across environments.
-FROM python:3.8
+# slim variant: same interpreter, far smaller download on slow (9p) builds.
+# Note: slim ships no curl — the compose healthcheck probes /health with the
+# stdlib (urllib) instead.
+FROM python:3.11-slim
 
 # Set the working directory inside the container to /app.
 # This directory will be the default location for all subsequent commands.

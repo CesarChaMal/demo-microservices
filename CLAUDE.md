@@ -1782,7 +1782,7 @@ docker system df
 # Pull base images manually first
 docker pull openjdk:22
 docker pull node:22
-docker pull python:3.11
+docker pull python:3.11-slim
 ```
 
 #### 5. Version Manager Issues (Local Development)

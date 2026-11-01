@@ -168,6 +168,8 @@ extra keys beyond these are fine — java/node/python each add a few.
 - The image must contain `curl` or `wget` **if** you use the HTTP compose healthcheck from
   Step 5. Distroless images ship neither — compile a tiny probe binary and exec it instead
   (`demo-go-service/internal/healthcheck/main.go` → compose `test: ["CMD", "/app/healthcheck"]`).
+  Python slim images ship neither either — probe with the stdlib
+  (`demo-python-service`: `test: ["CMD", "python", "-c", "import urllib.request;…"]`).
 - Go multi-stage: copy the **full source before `go mod tidy`** — intra-module imports
   (`patterns/*`, `internal/*`) must resolve or tidy strips your router from `go.mod`. The
   alternative is committing `go.sum` and using `go mod download`. Rationale comment lives in
@@ -313,8 +315,11 @@ The timing values mirror the existing Java/Eureka blocks, which probe their Actu
 Probe **your own contract endpoint** instead (`/health` for non-actuator services — the
 `["CMD", "curl", "-fsS", …]` form above). Distroless runtimes have no shell/curl: exec a
 compiled probe instead — `test: ["CMD", "/app/healthcheck"]`, built from
-`demo-go-service/internal/healthcheck/main.go`. Node/Python currently ship no compose
-healthcheck at all, so your block sets the example.
+`demo-go-service/internal/healthcheck/main.go`. The two non-actuator peers show both
+HTTP forms: node-service curls `/health` (any 2xx passes — `/health` returns 200 for
+`DEGRADED`, matching the EKS probes), and python-service — on a slim image with no
+curl — probes the same URL with a stdlib `urllib` one-liner. Grep for `"status":"UP"`
+only if your endpoint is Actuator-style, where a substring means healthy.
 
 ### Step 6 — `.env` / `.env.security` entries
 
