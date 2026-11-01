@@ -33,6 +33,7 @@ from patterns.messaging.event_streaming import (
 from patterns.messaging.inbox_pattern import (
     InboxPattern, TwoPhaseCommit, TwoPhaseCommitParticipant
 )
+from patterns.messaging.message_producer import MessageProducer, message_producer
 from patterns.transaction.saga import saga_orchestrator as transaction_saga_orchestrator
 from patterns.transaction.outbox import outbox_service, event_publisher
 from patterns.transaction.two_phase_commit import coordinator as tpc_coordinator
@@ -1054,6 +1055,32 @@ def handle_inbox_message():
         
     except Exception as e:
         return jsonify({'error': str(e), 'pattern': 'inbox-pattern'}), 500
+
+@app.route('/messaging/produce', methods=['POST'])
+@swag_from({
+    'tags': ['Messaging'],
+    'summary': 'Publish a message through the message producer pattern'
+})
+def produce_message():
+    try:
+        data = request.get_json() or {}
+        topic = data.get('topic', 'orders')
+        key = data.get('key', str(uuid.uuid4()))
+        payload = data.get('payload', {'event': 'order.created'})
+
+        buffered = message_producer.publish(topic, key, payload)
+
+        return jsonify({
+            'topic': topic,
+            'key': key,
+            'buffered': buffered,
+            'dropped': not buffered,
+            'stats': message_producer.get_stats(),
+            'pattern': 'message-producer'
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e), 'pattern': 'message-producer'}), 500
 
 @app.route('/transaction/2pc', methods=['POST'])
 @swag_from({

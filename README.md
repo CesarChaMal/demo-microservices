@@ -12,7 +12,7 @@ This project demonstrates a complete microservices ecosystem with:
 - **Database**: MySQL with connection pooling; Redis for the caching patterns
 - **API Documentation**: Swagger/OpenAPI integration
 - **Containerization**: Docker & Docker Compose
-- **Cloud Deployment**: AWS with Terraform (ECS, Lambda, RDS)
+- **Cloud Deployment**: AWS with Terraform (Lambda maintained; EKS planned; ECS deprecated — see `infra/README.md`)
 - **Infrastructure as Code**: Terraform modules for scalable deployment
 
 ## 📋 Services
@@ -21,7 +21,7 @@ This project demonstrates a complete microservices ecosystem with:
 |---------|------------|------|-------------|
 | **Eureka Server** | Spring Boot | 8761 | Service discovery and registration |
 | **Java Service** | Spring Boot 3 + Java 22 | 8080 | REST API with database integration |
-| **Node Service** | Express.js + Node 20 | 3000 | Lightweight API service |
+| **Node Service** | Express.js + Node 22 | 3000 | Lightweight API service |
 | **Python Service** | Flask + Python 3.11 | 5001 | Data processing service |
 | **Go Service** | chi router + Go 1.22 | 5002 | Go API service with Eureka registration (raw REST client) |
 | **MySQL Database** | MySQL 8.0 | 3306 | Persistent data storage |
@@ -72,7 +72,7 @@ run.bat docker
 
 ```bash
 # Setup with specific versions
-./run.sh local --java-version 22 --node-version 20 --python-version 3.11
+./run.sh local --java-version 22 --node-version 22 --python-version 3.11
 
 # Or use defaults
 ./run.sh local
@@ -81,12 +81,11 @@ run.bat docker
 ### 3. AWS Cloud Deployment
 
 ```bash
-# Deploy full infrastructure
-./run.sh aws
-
-# Deploy only Lambda functions
+# Deploy only Lambda functions (maintained path — builds the zip artifacts first)
 ./run.sh lambda
 ```
+
+> The legacy `./run.sh aws` (root `infra/` Terraform) is **deprecated** and now fails fast with a pointer. See `infra/README.md` for the status of every stack; the EKS path lands in `infra/eks`.
 
 ## 🛠️ Development
 
@@ -144,12 +143,13 @@ infra/
 ├── modules/
 │   ├── vpc/          # VPC, subnets, gateways
 │   └── instances/    # EC2, security groups
-├── docker/           # ECS deployment
-├── serverless/       # Lambda deployment
-└── *.tf             # Main infrastructure
+├── docker/           # ECS deployment — DEPRECATED (broken; quarantined)
+├── serverless/       # Lambda deployment — MAINTAINED
+├── *.tf              # Root stack — DEPRECATED
+└── README.md         # Read first: status of every stack
 ```
 
-### AWS Resources Created
+### AWS Resources Created (legacy stacks — see `infra/README.md` for what is maintained)
 
 - **VPC** with public/private subnets
 - **ECS Cluster** for containerized services
@@ -171,8 +171,8 @@ sdk install java 22
 sdk use java 22
 
 # Node.js with NVM
-nvm install 20
-nvm use 20
+nvm install 22
+nvm use 22
 
 # Python with pyenv
 pyenv install 3.11
@@ -199,6 +199,7 @@ services:
 - Java Service: http://localhost:8080/actuator/health
 - Node Service: http://localhost:3000/info
 - Python Service: http://localhost:5001/info
+- Go Service: http://localhost:5002/health
 
 ### Docker Health Checks
 - **MySQL**: `mysqladmin ping` with retry logic
@@ -252,13 +253,8 @@ Eureka Server → Database → Application Services
 - Service orchestration
 - Production-like environment
 
-### 3. AWS ECS
-```bash
-./run.sh aws
-```
-- Managed container orchestration
-- Auto-scaling capabilities
-- Load balancing
+### 3. AWS ECS (deprecated)
+The legacy ECS stack (`infra/docker`) is deprecated and quarantined — `./run.sh aws` fails fast with a pointer. The maintained AWS path today is Lambda (`./run.sh lambda`); EKS lands in `infra/eks`.
 
 ### 4. AWS Lambda
 ```bash
@@ -291,8 +287,13 @@ cd demo-java-service && ./mvnw test
 cd demo-node-service && npm test
 
 # Python Service
-cd demo-python-service && python -m pytest
+cd demo-python-service && python -m pytest tests/ -q
+
+# Go Service (build is the smoke test)
+cd demo-go-service && go build ./...
 ```
+
+CI (`.github/workflows/ci.yml`) runs every service family's build and tests on push and PR.
 
 ### Integration Testing
 ```bash
@@ -304,7 +305,7 @@ curl http://localhost:8761/eureka/apps
 
 ### Backend Services
 - **Java**: Spring Boot 3.3.1, Spring Cloud 2023.0.2, Java 22
-- **Node.js**: Express 4.21.1, Eureka JS Client, Node 20
+- **Node.js**: Express 4.21.1, Eureka JS Client, Node 22
 - **Python**: Flask 3.0.0, py-eureka-client, Python 3.11
 - **Go**: chi v5, Eureka over raw REST (`internal/eureka`), Go 1.22
 
@@ -318,7 +319,8 @@ curl http://localhost:8761/eureka/apps
 ### Development Tools
 - **API Documentation**: Swagger/OpenAPI 3.0
 - **Version Management**: SDKMAN, NVM, pyenv
-- **Build Tools**: Maven, npm, pip
+- **Build Tools**: Maven, npm, pip, go
+- **CI**: GitHub Actions (`.github/workflows/ci.yml`)
 - **Deployment**: Multi-environment scripts (run.sh/run.bat)
 
 ## 🤝 Contributing
