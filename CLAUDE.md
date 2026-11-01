@@ -177,6 +177,7 @@ demo-microservices/
 ├── destroy_stack.sh               # Stack teardown automation
 ├── scripts/build-lambda-zips.sh   # Builds infra/serverless/artifacts/*.zip
 ├── scripts/render-k8s.sh          # Renders infra/eks/k8s/*.yaml with account/region/tag
+├── scripts/destroy-aws.sh         # One-command AWS teardown (wrapper over destroy_stack.sh)
 ├── validate-security.sh           # Security validation script
 └── pattern-gap-analysis.sh        # Pattern coverage analysis (must stay PASS)
 ```
@@ -730,7 +731,7 @@ aws logs tail /aws/lambda/demo-node-lambda --follow
 
 **Command:**
 ```bash
-AWS_REGION=eu-west-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=eks ./create_stack.sh
+AWS_REGION=eu-central-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=eks ./create_stack.sh
 ```
 
 **Infrastructure Created (`infra/eks/`):**
@@ -752,7 +753,8 @@ images (`sha-<short>` + `latest`) and applies the rendered manifests.
 - Destroy order matters: delete k8s resources first (releases the NLB inside the
   cluster) before `destroy_stack.sh` tears down the VPC — see `infra/eks/README.md`
 - **Cost warning**: an always-on Fargate cluster + NAT + NLB costs real money —
-  run `destroy_stack.sh` when done demoing
+  run `./scripts/destroy-aws.sh` (or `destroy_stack.sh` with the full env) when done
+  demoing; charges start only once `create_stack.sh` has been run
 
 ### Deployment Comparison
 
@@ -2050,6 +2052,7 @@ If you encounter issues not covered here:
 - **run.sh / run.bat** - Multi-environment launcher (Docker, local, AWS, Lambda)
 - **create_stack.sh** - Automated stack creation (`MODE=docker|serverless|eks`)
 - **destroy_stack.sh** - Automated stack teardown
+- **scripts/destroy-aws.sh** - One-command AWS teardown: derives account ID via STS, defaults `APP=demo ENV=dev MODE=eks`, delegates to `destroy_stack.sh` (`--mode all` = EKS + Lambda)
 - **scripts/build-lambda-zips.sh** - Builds the `infra/serverless/artifacts/*.zip` Lambdas
 - **scripts/render-k8s.sh** - Renders `infra/eks/k8s/*.yaml` with account/region/tag
 - **.github/workflows/deploy.yml** - EKS deploy pipeline (build + push images, apply manifests)

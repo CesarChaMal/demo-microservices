@@ -1,7 +1,7 @@
 package com.example.java_service.controller;
 
 import com.example.java_service.idempotency.IdempotencyService;
-import com.example.java_service.materialized.MaterializedViewService;
+import com.example.java_service.patterns.caching.MaterializedViewService;
 import com.example.java_service.toggle.FeatureToggle;
 import com.example.java_service.dto.ValueRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,16 +35,17 @@ public class UltimateController {
         if (idempotencyKey == null) {
             idempotencyKey = idempotencyService.generateKey("process", request.getValue().toString());
         }
-        
+        final String key = idempotencyKey;  // effectively-final copy for the lambda below
+
         try {
             Map<String, Object> result = idempotencyService.executeIdempotent(
-                idempotencyKey,
+                key,
                 () -> {
                     // Simulate processing
                     int multiplier = featureManager.isActive(FeatureToggle.NEW_CALCULATION_ALGORITHM) ? 5 : 2;
                     return Map.of(
                         "result", request.getValue() * multiplier,
-                        "idempotencyKey", idempotencyKey,
+                        "idempotencyKey", key,
                         "algorithm", featureManager.isActive(FeatureToggle.NEW_CALCULATION_ALGORITHM) ? "v2" : "v1",
                         "processId", UUID.randomUUID().toString()
                     );
@@ -75,7 +76,7 @@ public class UltimateController {
     }
     
     @GetMapping("/hourly-stats/{hour}")
-    public Map<Object, Object> getHourlyStats(@PathVariable int hour) {
+    public Map<String, Object> getHourlyStats(@PathVariable int hour) {
         return materializedViewService.getHourlyStats(hour);
     }
     

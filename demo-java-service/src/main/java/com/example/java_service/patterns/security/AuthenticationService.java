@@ -69,8 +69,9 @@ public class AuthenticationService {
         stats.put("active_tokens", tokens.size());
         
         // Clean expired tokens
-        long expiredCount = tokens.entrySet().removeIf(entry -> 
-            entry.getValue().expiresAt.isBefore(Instant.now()));
+        int sizeBefore = tokens.size();
+        tokens.entrySet().removeIf(entry -> entry.getValue().expiresAt.isBefore(Instant.now()));
+        long expiredCount = sizeBefore - tokens.size();
         if (expiredCount > 0) {
             metrics.put("tokens_expired_cleanup", 
                 metrics.getOrDefault("tokens_expired_cleanup", 0L) + expiredCount);
