@@ -48,6 +48,26 @@ esac
 # Clean local TF metadata in the stack dir (safe; remote state lives in S3)
 rm -rf "$TF_DIR/.terraform" "$TF_DIR/.terraform.lock.hcl" || true
 
+# eks: delete the k8s resources FIRST so the Service-created NLB is released
+# inside the cluster before terraform destroys the VPC — otherwise the subnet
+# delete fails on the dangling load balancer and the destroy hangs.
+# Best-effort: missing kubectl/kubeconfig only warns, never blocks.
+if [[ "$MODE" == "eks" ]]; then
+  if command -v kubectl >/dev/null 2>&1; then
+    echo "Deleting k8s resources (releases the NLB before the VPC goes)..."
+    if TAG=latest ./scripts/render-k8s.sh | kubectl delete -f - --ignore-not-found; then
+      echo "k8s resources deleted. Giving the NLB a moment to drain before terraform touches the VPC..."
+      sleep 15
+    else
+      echo "WARN: kubectl delete failed (cluster already gone? wrong kubeconfig?) — continuing with terraform destroy."
+    fi
+  else
+    echo "WARN: kubectl not found — skipping k8s cleanup. If the cluster still"
+    echo "      exists, delete its resources first or the VPC destroy may hang:"
+    echo "  AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID AWS_REGION=$AWS_REGION TAG=latest ./scripts/render-k8s.sh | kubectl delete -f -"
+  fi
+fi
+
 pushd "$TF_DIR" >/dev/null
 
 # Backend config for this stack
@@ -81,13 +101,6 @@ terraform validate
 
 echo "Destroying ${MODE} stack for ${APP}-${ENV}..."
 terraform destroy -auto-approve -var-file="${TFVARS_FILE}"
-
-if [[ "$MODE" == "eks" ]]; then
-  echo
-  echo "Reminder (eks): delete the k8s resources first so the NLB is released"
-  echo "inside the cluster before the VPC goes:"
-  echo "  AWS_ACCOUNT_ID=… AWS_REGION=$AWS_REGION TAG=latest ./scripts/render-k8s.sh | kubectl delete -f -"
-fi
 
 popd >/dev/null
 echo "Done."
