@@ -38,7 +38,28 @@ and `infra/docker/` are intentionally excluded — they are quarantined, and CI 
 not be extended to validate stacks we do not maintain.
 
 `.github/workflows/deploy.yml` is the EKS deploy pipeline (build + push all 7
-images to ECR, apply the rendered manifests).
+images to ECR, apply the rendered manifests). It creates **no infrastructure
+itself** — no cluster, no ECR repos, no VPC. It only pushes images and applies
+in-cluster manifests to a cluster that already exists (created once, locally,
+via `MODE=eks ./create_stack.sh`). The one cloud object it indirectly creates
+is the gateway NLB, provisioned by AWS when the gateway's k8s `Service`
+(type LoadBalancer) is first applied.
+
+## Teardown / cost safety
+
+Charges start only when you run `create_stack.sh` (EKS control plane ~$0.10/hr
++ pods + NAT + NLB — see `eks/README.md`). To stop them:
+
+```bash
+./scripts/destroy-aws.sh             # EKS stack (default) — the panic button
+./scripts/destroy-aws.sh --mode all  # EKS + Lambda stacks
+```
+
+The wrapper derives the account ID via `aws sts get-caller-identity`, defaults
+to `APP=demo ENV=dev`, and delegates to `destroy_stack.sh` → `infra/destroy.sh`
+(the tested path: k8s resources deleted first so the NLB is released *inside*
+the cluster before terraform destroys the VPC). If the VPC destroy hangs on
+leftover ENIs, re-run the script — it is idempotent.
 
 ## Security notes (names only — never commit these files)
 
