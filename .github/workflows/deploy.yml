@@ -21,6 +21,15 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    # Doc-only pushes (and deploy.yml-only CI fixes) must not kick off a
+    # 45-minute deploy — especially while no cluster exists. A push runs only
+    # when at least one changed file matches none of these patterns; use
+    # `gh workflow run deploy.yml` to deploy such pushes by hand.
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '**/*.md'
+      - '.github/workflows/deploy.yml'
 
 concurrency:
   group: deploy-eks
