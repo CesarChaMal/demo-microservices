@@ -131,7 +131,7 @@
 		<dependency>
 			<groupId>org.togglz</groupId>
 			<artifactId>togglz-spring-boot-starter</artifactId>
-			<version>3.3.4</version>
+			<version>4.4.0</version>
 		</dependency>
 		
 		<!-- Tracing -->
