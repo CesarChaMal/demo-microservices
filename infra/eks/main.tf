@@ -9,7 +9,9 @@
 #     `terraform init -backend=false && terraform validate` working in CI
 #     without cluster credentials.
 #   - vpc-cni / coredns / kube-proxy are the only addons needed on Fargate.
-#     coredns needs compute_type = "Fargate" because there are no EC2 nodes.
+#     No configuration_values on coredns: current addon versions dropped the
+#     compute_type key from their schema (CreateAddon rejects it with a 400) —
+#     the addon schedules onto the Fargate `core` profile on its own.
 
 data "aws_availability_zones" "available" {
   state = "available"
@@ -82,9 +84,10 @@ module "eks" {
     }
     coredns = {
       most_recent = true
-      # No EC2 nodes in this cluster — coredns must schedule on Fargate.
-      # configuration_values is the raw AWS API JSON string.
-      configuration_values = jsonencode({ compute_type = "Fargate" })
+      # Default config. Older addon versions took compute_type = "Fargate"
+      # here for Fargate-only clusters; current versions removed that key
+      # from the addon schema (passing it → InvalidParameterException), so
+      # the Fargate `core` profile below is all coredns needs.
     }
     kube-proxy = {
       most_recent = true
