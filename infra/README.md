@@ -45,6 +45,45 @@ via `MODE=eks ./create_stack.sh`). The one cloud object it indirectly creates
 is the gateway NLB, provisioned by AWS when the gateway's k8s `Service`
 (type LoadBalancer) is first applied.
 
+### GitHub Actions deploy identity (OIDC — no long-lived keys)
+
+`deploy.yml` authenticates with temporary credentials obtained by exchanging
+a GitHub OIDC token via `sts:AssumeRoleWithWebIdentity`. No AWS access key is
+stored in GitHub — the repo's only secret is `AWS_DEPLOY_ROLE_ARN`.
+
+Three account-level pieces make this work. They are **not part of any
+Terraform stack** (deliberately: the OIDC provider must exist before CI can
+ever run, and it is shared, not per-environment), so they were created once
+directly in IAM and must be torn down by hand (commands below):
+
+| Piece | Name | Notes |
+|-------|------|-------|
+| OIDC provider | `token.actions.githubusercontent.com` (clientID `sts.amazonaws.com`) | Account-level; reusable by any repo in this account |
+| IAM role | `github-actions-demo-microservices-deploy` | Trust: `sub = repo:CesarChaMal/demo-microservices:*`, max session 1h |
+| Inline policy | `demo-microservices-deploy-scoped` | `sts:GetCallerIdentity` + `eks:DescribeCluster/ListClusters` on `demo-dev-cluster` + `ecr:GetAuthorizationToken` + the ECR push set on `repository/demo-*` |
+
+Inside the cluster, `infra/eks/main.tf` grants that role admin with an
+`aws_eks_access_entry` + `AmazonEKSClusterAdminPolicy` association
+(cluster scope). This is required: `enable_cluster_creator_admin_permissions`
+only admits whoever ran `create_stack.sh` locally — without the access entry,
+CI's kubectl gets 403 even though `DescribeCluster` succeeds.
+
+**Tearing the identity down** (when the demo is retired — not needed for the
+day-to-day `destroy-aws.sh` teardown, which only stops billing):
+
+```bash
+aws iam delete-role-policy --role-name github-actions-demo-microservices-deploy \
+  --policy-name demo-microservices-deploy-scoped
+aws iam delete-role --role-name github-actions-demo-microservices-deploy
+aws iam delete-open-id-connect-provider \
+  --open-id-connect-provider-arn "$(aws iam list-open-id-connect-providers \
+    --query "OpenIDConnectProviderList[?ends_with(Arn, 'token.actions.githubusercontent.com')].Arn" \
+    --output text)"
+# then delete the AWS_DEPLOY_ROLE_ARN secret on GitHub (repo Settings → Secrets)
+```
+
+(The access entry is deleted with the cluster — it is part of the EKS stack.)
+
 ## Teardown / cost safety
 
 Charges start only when you run `create_stack.sh` (EKS control plane ~$0.10/hr
