@@ -74,6 +74,7 @@ go run .
 | Variable | Default | Purpose |
 |---|---|---|
 | `EUREKA_SERVER_URL` | `http://eureka-server:8761/eureka/` | Eureka registration URL |
+| `RABBITMQ_URL` | `amqp://demouser:demopass@rabbitmq:5672/%2F` | AMQP URL for the messaging patterns; unset (or `disabled`) runs them on the in-process buffer fallback |
 | `PORT` | `5002` | Listen port |
 | `SERVICE_HOSTNAME` | `go-service` | Hostname advertised to Eureka (compose hostname) |
 | `JAVA_SERVICE_URL` / `NODE_SERVICE_URL` / `PYTHON_SERVICE_URL` | `http://java-service:8080` etc. | Upstreams used by the API Gateway pattern |
@@ -83,10 +84,11 @@ go run .
 ```
 demo-go-service/
 ├── main.go                     # router, contract endpoints, Eureka wiring, shutdown
-├── go.mod                      # module demo-go-service; single dep: chi
+├── go.mod                      # module demo-go-service; deps: chi + amqp091-go
 ├── Dockerfile                  # multi-stage, distroless, nonroot
 ├── internal/
 │   ├── eureka/eureka.go        # Step 4b REST client (register/heartbeat/deregister/query)
+│   ├── broker/broker.go        # RabbitMQ client for the messaging patterns (lazy dial, in-process fallback)
 │   └── healthcheck/main.go     # tiny probe binary for the compose healthcheck
 └── patterns/<category>/*.go    # 32 pattern implementations, one file each
 ```

@@ -648,9 +648,16 @@ stable.
 
 **Go implementation** (`patterns/messaging/messageProducer.go`): `MessageProducer` (64-slot buffer, from `NewMessageProducer(64)` in `main.go`) publishes through a non-blocking `select` — `case messages <- m:` on success, `default:` when the buffer is full, in which case `Publish` returns `false` and the drop is counted. That `select`/`default` pair is the whole backpressure story: the producer learns about congestion synchronously. `Consume()` drains one message from the buffer, simulating the subscriber side.
 
+**Two transports, one contract.** The producer picks its transport from `RABBITMQ_URL` (client in `internal/broker/broker.go`):
+
+- **`RABBITMQ_URL` set** (the compose default) → a real RabbitMQ broker: the topic becomes a durable queue (`QueueDeclare(topic, true, …)`), the payload a persistent JSON message (`amqp.Persistent`), and `Consume()` pops from the `orders` queue with a basic.Get. An unreachable broker returns the same `false` a full buffer would — backpressure is backpressure, whatever the transport. The client dials lazily, re-dials at most every 5 s, and guards the connection behind a single mutex.
+- **`RABBITMQ_URL` unset or `disabled`** (bare `go run`) → the original in-process bounded buffer, so the pattern demos with zero infrastructure — the same fallback stance java takes with MySQL → H2.
+
+The route response says which one you're on (`"transport": "rabbitmq" | "in-process"`) and, on the broker transport, adds a `stats.broker` block (connection state, published/consumed counters, queue depth) mirroring what the management UI shows.
+
 ```go
 mp := messaging.NewMessageProducer(64)
-ok := mp.Publish("orders", "o-1", map[string]any{"total": 42}) // false when buffer full
+ok := mp.Publish("orders", "o-1", map[string]any{"total": 42}) // false when buffer full / broker down
 msg := mp.Consume()
 ```
 
@@ -661,7 +668,9 @@ curl "http://localhost:5002/api/patterns/message-producer?key=o-1"
 ```
 
 Each call publishes one message and reports the published/dropped/consumed
-tallies plus the buffer fill level.
+tallies plus the buffer fill level (or, on RabbitMQ, the broker stats). Watch
+the `orders` queue depth grow in the management UI at
+http://localhost:15672 (credentials in `.env`).
 
 ## 30. Event Stream Processor Pattern
 
