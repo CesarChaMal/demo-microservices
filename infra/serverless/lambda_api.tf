@@ -2,7 +2,10 @@
 data "aws_iam_policy_document" "lambda_assume" {
   statement {
     actions = ["sts:AssumeRole"]
-    principals { type = "Service", identifiers = ["lambda.amazonaws.com"] }
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
   }
 }
 
@@ -22,7 +25,7 @@ resource "aws_lambda_function" "java" {
   function_name = "${local.name_prefix}-java"
   role          = aws_iam_role.lambda_exec.arn
   filename      = var.JAVA_LAMBDA_ZIP
-  handler       = "org.springframework.cloud.function.adapter.aws.FunctionInvoker::handleRequest"
+  handler       = "com.example.java_service.lambda.StreamLambdaHandler::handleRequest"
   runtime       = "java21"
   memory_size   = 1024
   timeout       = 15
@@ -35,7 +38,7 @@ resource "aws_lambda_function" "node" {
   function_name = "${local.name_prefix}-node"
   role          = aws_iam_role.lambda_exec.arn
   filename      = var.NODE_LAMBDA_ZIP
-  handler       = "index.handler"   # adjust to your handler
+  handler       = "handler.handler"
   runtime       = "nodejs22.x"
   memory_size   = 512
   timeout       = 15
@@ -48,7 +51,7 @@ resource "aws_lambda_function" "python" {
   function_name = "${local.name_prefix}-python"
   role          = aws_iam_role.lambda_exec.arn
   filename      = var.PYTHON_LAMBDA_ZIP
-  handler       = "app.lambda_handler"  # adjust to your handler
+  handler       = "lambda_function.lambda_handler"
   runtime       = "python3.11"
   memory_size   = 512
   timeout       = 15
@@ -63,41 +66,52 @@ resource "aws_apigatewayv2_api" "http" {
 }
 
 # Integrations
-resource "aws_apigatewayv2_integration" "java"   { count = var.DEPLOY_SERVERLESS ? 1 : 0
-  api_id = aws_apigatewayv2_api.http[0].id  integration_type = "AWS_PROXY"
-  integration_uri = aws_lambda_function.java[0].invoke_arn   payload_format_version = "2.0"
+resource "aws_apigatewayv2_integration" "java" {
+  count                  = var.DEPLOY_SERVERLESS ? 1 : 0
+  api_id                 = aws_apigatewayv2_api.http[0].id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.java[0].invoke_arn
+  payload_format_version = "2.0"
 }
-resource "aws_apigatewayv2_integration" "node"   { count = var.DEPLOY_SERVERLESS ? 1 : 0
-  api_id = aws_apigatewayv2_api.http[0].id  integration_type = "AWS_PROXY"
-  integration_uri = aws_lambda_function.node[0].invoke_arn   payload_format_version = "2.0"
+
+resource "aws_apigatewayv2_integration" "node" {
+  count                  = var.DEPLOY_SERVERLESS ? 1 : 0
+  api_id                 = aws_apigatewayv2_api.http[0].id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.node[0].invoke_arn
+  payload_format_version = "2.0"
 }
-resource "aws_apigatewayv2_integration" "python" { count = var.DEPLOY_SERVERLESS ? 1 : 0
-  api_id = aws_apigatewayv2_api.http[0].id  integration_type = "AWS_PROXY"
-  integration_uri = aws_lambda_function.python[0].invoke_arn payload_format_version = "2.0"
+
+resource "aws_apigatewayv2_integration" "python" {
+  count                  = var.DEPLOY_SERVERLESS ? 1 : 0
+  api_id                 = aws_apigatewayv2_api.http[0].id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.python[0].invoke_arn
+  payload_format_version = "2.0"
 }
 
 # Routes (adjust to how you want to map)
 resource "aws_apigatewayv2_route" "java_calculate" {
-  count    = var.DEPLOY_SERVERLESS ? 1 : 0
-  api_id   = aws_apigatewayv2_api.http[0].id
+  count     = var.DEPLOY_SERVERLESS ? 1 : 0
+  api_id    = aws_apigatewayv2_api.http[0].id
   route_key = "POST /calculate"
   target    = "integrations/${aws_apigatewayv2_integration.java[0].id}"
 }
 resource "aws_apigatewayv2_route" "node_process" {
-  count    = var.DEPLOY_SERVERLESS ? 1 : 0
-  api_id   = aws_apigatewayv2_api.http[0].id
+  count     = var.DEPLOY_SERVERLESS ? 1 : 0
+  api_id    = aws_apigatewayv2_api.http[0].id
   route_key = "POST /process"
   target    = "integrations/${aws_apigatewayv2_integration.node[0].id}"
 }
 resource "aws_apigatewayv2_route" "python_process" {
-  count    = var.DEPLOY_SERVERLESS ? 1 : 0
-  api_id   = aws_apigatewayv2_api.http[0].id
+  count     = var.DEPLOY_SERVERLESS ? 1 : 0
+  api_id    = aws_apigatewayv2_api.http[0].id
   route_key = "POST /py-process"
   target    = "integrations/${aws_apigatewayv2_integration.python[0].id}"
 }
 resource "aws_apigatewayv2_route" "info" {
-  count    = var.DEPLOY_SERVERLESS ? 1 : 0
-  api_id   = aws_apigatewayv2_api.http[0].id
+  count     = var.DEPLOY_SERVERLESS ? 1 : 0
+  api_id    = aws_apigatewayv2_api.http[0].id
   route_key = "GET /info"
   target    = "integrations/${aws_apigatewayv2_integration.node[0].id}" # or python/java if you prefer
 }

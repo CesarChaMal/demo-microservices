@@ -19,16 +19,14 @@ for VAR in AWS_REGION AWS_ACCOUNT_ID APP ENV VER; do
 done
 
 BUCKET_STATE="aws-s3-bucket-state-$APP"
-KEY="terraform.tfstate"
+# Per-mode state key — must match infra/create.sh
+KEY="${MODE}/terraform.tfstate"
 
 echo "==> Using:"
 echo "    MODE=$MODE"
 echo "    APP=$APP ENV=$ENV VER=$VER"
 echo "    AWS_REGION=$AWS_REGION AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID"
 echo "    STATE BUCKET=$BUCKET_STATE KEY=$KEY"
-
-# Clean local TF metadata (safe; remote state is in S3)
-rm -rf .terraform .terraform.lock.hcl || true
 
 # Ensure state bucket exists (idempotent)
 if ! aws s3 ls --region "$AWS_REGION" "s3://$BUCKET_STATE" >/dev/null 2>&1; then
@@ -45,6 +43,9 @@ case "$MODE" in
     exit 1
     ;;
 esac
+
+# Clean local TF metadata in the stack dir (safe; remote state lives in S3)
+rm -rf "$TF_DIR/.terraform" "$TF_DIR/.terraform.lock.hcl" || true
 
 pushd "$TF_DIR" >/dev/null
 

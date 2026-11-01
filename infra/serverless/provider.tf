@@ -1,6 +1,5 @@
 provider "aws" {
-  access_key = var.AWS_ACCESS_KEY
-  secret_key = var.AWS_SECRET_KEY
-  region     = var.AWS_REGION
+  # Credentials come from the standard AWS chain (env vars, ~/.aws, SSO, instance profile)
+  region = var.AWS_REGION
 }
 

@@ -1,4 +1,4 @@
-package com.example.lambda;
+package com.example.java_service.lambda;
 
 import com.amazonaws.serverless.exceptions.ContainerInitializationException;
 import com.amazonaws.serverless.proxy.internal.LambdaContainerHandler;
@@ -6,7 +6,7 @@ import com.amazonaws.serverless.proxy.spring.SpringBootProxyHandlerBuilder;
 import com.amazonaws.services.lambda.runtime.RequestStreamHandler;
 import com.amazonaws.services.lambda.runtime.Context;
 
-import com.example.JavaServiceApplication;
+import com.example.java_service.JavaServiceApplication;
 import java.io.*;
 
 public class StreamLambdaHandler implements RequestStreamHandler {
