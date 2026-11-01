@@ -12,6 +12,11 @@ resource "aws_ecr_repository" "services" {
   # Tags are immutable — a pushed tag can never be silently overwritten.
   image_tag_mutability = "IMMUTABLE"
 
+  # Repos hold pushed images by the time destroy runs (deploy.yml / create.sh
+  # push one per service). Without this, `terraform destroy` fails on every
+  # non-empty repo with "repository not empty" and the whole stack survives.
+  force_delete = true
+
   image_scanning_configuration {
     scan_on_push = true
   }
