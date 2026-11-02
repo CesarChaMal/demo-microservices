@@ -152,7 +152,8 @@ demo-microservices/
 │   ├── CRITICAL-FIXES-COMPLETE.md # Critical fixes report
 │   ├── PATTERN-REVIEW-COMPLETE.md # Pattern review (canonical 32-pattern list)
 │   ├── DEPLOYMENT.md              # Full AWS EKS deployment walkthrough
-│   └── PRICING.md                 # Monthly cost breakdown & cost-cutting levers
+│   ├── PRICING.md                 # Monthly cost breakdown & cost-cutting levers
+│   └── HELP-*.md                  # Spring Initializr reference notes (moved from service dirs)
 │
 ├── db/                            # Database initialization
 │   └── init/                      # 01-schema.sql + 02-seed.sql for MySQL setup
@@ -177,8 +178,8 @@ demo-microservices/
 │
 ├── docker-compose.yml             # Container orchestration
 ├── run.sh / run.bat               # Multi-environment launcher scripts
-├── create_stack.sh                # Stack creation automation
-├── destroy_stack.sh               # Stack teardown automation
+├── create_stack.sh                # Stack creation (defaults + .env → MODE=eks ENV=dev; vars may override)
+├── destroy_stack.sh               # Stack teardown (same defaults as create_stack.sh)
 ├── scripts/build-lambda-zips.sh   # Builds infra/serverless/artifacts/*.zip
 ├── scripts/render-k8s.sh          # Renders infra/eks/k8s/*.yaml with account/region/tag
 ├── scripts/destroy-aws.sh         # One-command AWS teardown (wrapper over destroy_stack.sh)
@@ -311,7 +312,8 @@ All full-featured services organize patterns into **10 categories**:
 3. **Choose Development Mode**
    - **Docker (Recommended)**: `./run.sh docker`
    - **Local Development**: `./run.sh local`
-   - **AWS EKS (primary)**: `MODE=eks ./create_stack.sh` (+ `.github/workflows/deploy.yml` on push)
+   - **AWS EKS (primary)**: `./create_stack.sh` (defaults to MODE=eks ENV=dev; override via env vars/.env)
+     (+ `.github/workflows/deploy.yml` on push)
    - **AWS Lambda**: `./run.sh lambda`
    - (`./run.sh aws` legacy ECS — deprecated, fails fast with a pointer)
 
@@ -735,6 +737,8 @@ aws logs tail /aws/lambda/demo-node-lambda --follow
 
 **Command:**
 ```bash
+./create_stack.sh   # bare: .env entries / built-in defaults (APP=demo ENV=dev VER=1.0.0 MODE=eks eu-central-1)
+# or fully explicit:
 AWS_REGION=eu-central-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=eks ./create_stack.sh
 ```
 
@@ -757,8 +761,8 @@ images (`sha-<short>` + `latest`) and applies the rendered manifests.
 - Destroy order matters: delete k8s resources first (releases the NLB inside the
   cluster) before `destroy_stack.sh` tears down the VPC — see `infra/eks/README.md`
 - **Cost warning**: an always-on Fargate cluster + NAT + NLB costs real money —
-  run `./scripts/destroy-aws.sh` (or `destroy_stack.sh` with the full env) when done
-  demoing; charges start only once `create_stack.sh` has been run
+  run `./scripts/destroy-aws.sh --yes` (or bare `./destroy_stack.sh` — same defaults)
+  when done demoing; charges start only once `create_stack.sh` has been run
 
 ### Deployment Comparison
 
@@ -2056,8 +2060,8 @@ If you encounter issues not covered here:
 ### Scripts
 
 - **run.sh / run.bat** - Multi-environment launcher (Docker, local, AWS, Lambda)
-- **create_stack.sh** - Automated stack creation (`MODE=docker|serverless|eks`)
-- **destroy_stack.sh** - Automated stack teardown
+- **create_stack.sh** - Automated stack creation (`MODE=docker|serverless|eks`; bare invocation works — reads .env then built-in defaults, explicit env vars win)
+- **destroy_stack.sh** - Automated stack teardown (same defaults/precedence as create_stack.sh)
 - **scripts/destroy-aws.sh** - One-command AWS teardown: derives account ID via STS, defaults `APP=demo ENV=dev MODE=eks`, delegates to `destroy_stack.sh` (`--mode all` = EKS + Lambda)
 - **scripts/build-lambda-zips.sh** - Builds the `infra/serverless/artifacts/*.zip` Lambdas
 - **scripts/render-k8s.sh** - Renders `infra/eks/k8s/*.yaml` with account/region/tag
@@ -2116,7 +2120,7 @@ If you encounter issues not covered here:
 ./run.sh local
 
 # Deploy to AWS (EKS — primary)
-MODE=eks ./create_stack.sh   # then push to main → deploy.yml builds+applies
+./create_stack.sh   # MODE=eks ENV=dev by default; then push to main → deploy.yml builds+applies
 
 # Deploy to AWS (Lambda)
 ./run.sh lambda

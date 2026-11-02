@@ -2,21 +2,35 @@
 set -euo pipefail
 
 # Optional: load a .env file from the repo root if present
-[[ -f .env ]] && source .env
+if [[ -f .env ]]; then source .env; fi
 
-# Defaults
-: "${MODE:=docker}"   # docker | serverless | eks
+# Defaults: explicit env vars win over .env entries, .env wins over these.
+: "${APP:=demo}"
 : "${ENV:=dev}"
+: "${VER:=1.0.0}"
+: "${MODE:=eks}"          # docker | serverless | eks
+: "${AWS_REGION:=eu-central-1}"
+if [[ -z "${AWS_ACCOUNT_ID:-}" ]]; then
+  AWS_ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)" \
+    || { echo "ERROR: AWS_ACCOUNT_ID is not set and could not be derived via STS"; exit 1; }
+fi
 
 usage() {
   cat <<EOF
 Usage:
-  AWS_REGION=<region> AWS_ACCOUNT_ID=<id> APP=<name> ENV=<env> VER=<ver> MODE=<docker|serverless|eks> ./create_stack.sh
+  ./create_stack.sh                 # bare: uses .env entries / built-in defaults
+  MODE=<mode> ENV=<env> ... ./create_stack.sh   # any var may be overridden inline
+
+Precedence: explicit env var > .env entry > default.
+Defaults: APP=demo ENV=dev VER=1.0.0 MODE=eks AWS_REGION=eu-central-1
+AWS_ACCOUNT_ID: derived via `aws sts get-caller-identity` when unset.
 
 Examples:
-  AWS_REGION=eu-west-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=serverless ./create_stack.sh
-  AWS_REGION=eu-west-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=docker     ./create_stack.sh
-  AWS_REGION=eu-west-1 AWS_ACCOUNT_ID=123456789012 APP=demo ENV=dev VER=1.0.0 MODE=eks        ./create_stack.sh
+  ./create_stack.sh                                  # EKS dev stack (defaults)
+  MODE=serverless ./create_stack.sh                  # Lambda stack
+  ENV=prod AWS_REGION=eu-west-1 ./create_stack.sh    # other env / region
+
+Teardown: ./destroy_stack.sh (same defaults) or ./scripts/destroy-aws.sh --yes
 EOF
 }
 
