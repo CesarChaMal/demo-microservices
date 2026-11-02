@@ -5,7 +5,7 @@
  *   - demo-go-service/patterns/messaging/messageProducer.go
  *   - demo-python-service/patterns/messaging/message_producer.py
  *   - demo-java-service .../messaging/MessageProducer.java
- * Catalog entry: NODE-PATTERNS.md "## 29. Message Producer Pattern"
+ * Catalog entry: docs/NODE-PATTERNS.md "## 29. Message Producer Pattern"
  *
  * In-memory producer with a bounded buffer: when the buffer is full the
  * message is DROPPED and counted, making backpressure visible in stats —

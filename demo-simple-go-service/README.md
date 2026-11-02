@@ -99,7 +99,7 @@ docker run -p 5002:5002 --network=micro_net go-simple-service
 
 ## Eureka Registration
 
-Registration follows ADDING_A_MICROSERVICE.md Step 4b (plain REST against the Eureka API):
+Registration follows docs/ADDING_A_MICROSERVICE.md Step 4b (plain REST against the Eureka API):
 `POST /eureka/apps/GO-SERVICE` on startup, `PUT` heartbeat every 30 s,
 `DELETE` on shutdown.
 

@@ -71,14 +71,6 @@ demo-microservices/
 │
 ├── README.md                       # Main documentation
 ├── CLAUDE.md                       # This file - AI assistant guide
-├── ADDING_A_MICROSERVICE.md       # Authoritative guide for adding a new service
-├── JAVA-PATTERNS.md               # Java patterns documentation
-├── NODE-PATTERNS.md               # Node.js patterns documentation
-├── PYTHON-PATTERNS.md             # Python patterns documentation
-├── GO-PATTERNS.md                 # Go patterns documentation
-├── SECURITY-FIXES.md              # Security improvements log
-├── CRITICAL-FIXES-COMPLETE.md     # Critical fixes report
-├── PATTERN-REVIEW-COMPLETE.md     # Pattern review (canonical 32-pattern list)
 ├── LICENSE                        # MIT license
 ├── .github/workflows/ci.yml       # CI: build/test all families + terraform/k8s validation
 ├── .github/workflows/deploy.yml   # EKS deploy: build+push images to ECR, apply manifests
@@ -150,7 +142,17 @@ demo-microservices/
 │   ├── handler.js / lambda_function.py / Handler.java
 │   └── deployment configs
 │
-├── docs/                          # Deployment & cost guides (DEPLOYMENT.md, PRICING.md)
+├── docs/                          # All repo guides live here
+│   ├── ADDING_A_MICROSERVICE.md   # Authoritative guide for adding a new service
+│   ├── JAVA-PATTERNS.md           # Java patterns documentation
+│   ├── NODE-PATTERNS.md           # Node.js patterns documentation
+│   ├── PYTHON-PATTERNS.md         # Python patterns documentation
+│   ├── GO-PATTERNS.md             # Go patterns documentation
+│   ├── SECURITY-FIXES.md          # Security improvements log
+│   ├── CRITICAL-FIXES-COMPLETE.md # Critical fixes report
+│   ├── PATTERN-REVIEW-COMPLETE.md # Pattern review (canonical 32-pattern list)
+│   ├── DEPLOYMENT.md              # Full AWS EKS deployment walkthrough
+│   └── PRICING.md                 # Monthly cost breakdown & cost-cutting levers
 │
 ├── db/                            # Database initialization
 │   └── init/                      # 01-schema.sql + 02-seed.sql for MySQL setup
@@ -1078,7 +1080,7 @@ Before deploying or committing code:
 
 ### Adding a New Microservices Pattern
 
-> Adding a whole new *service*? Follow **ADDING_A_MICROSERVICE.md** — the
+> Adding a whole new *service*? Follow **docs/ADDING_A_MICROSERVICE.md** — the
 > authoritative step-by-step guide. This section covers adding a *pattern* to
 > the existing services.
 
@@ -1135,7 +1137,7 @@ Before deploying or committing code:
    ```
 
 5. **Keep coverage honest**: `bash pattern-gap-analysis.sh` must stay PASS —
-   the canonical list is 32 patterns per language (see PATTERN-REVIEW-COMPLETE.md).
+   the canonical list is 32 patterns per language (see docs/PATTERN-REVIEW-COMPLETE.md).
 
 ### Adding a New API Endpoint
 
@@ -1489,7 +1491,7 @@ pip-audit          # Python
 
 ## Pattern Documentation
 
-This repository implements **the same 32 canonical patterns** across Java, Node.js, Python, and Go (the authoritative list is PATTERN-REVIEW-COMPLETE.md). The categories below illustrate the catalog:
+This repository implements **the same 32 canonical patterns** across Java, Node.js, Python, and Go (the authoritative list is docs/PATTERN-REVIEW-COMPLETE.md). The categories below illustrate the catalog:
 
 ### Pattern Categories
 
@@ -1561,10 +1563,10 @@ This repository implements **the same 32 canonical patterns** across Java, Node.
 
 Detailed pattern documentation is available in:
 
-- **`JAVA-PATTERNS.md`** - Java implementations with Spring Boot (32 patterns)
-- **`NODE-PATTERNS.md`** - Node.js implementations with Express (32 patterns)
-- **`PYTHON-PATTERNS.md`** - Python implementations with Flask (32 patterns)
-- **`GO-PATTERNS.md`** - Go implementations with chi (32 patterns, one file per pattern)
+- **`docs/JAVA-PATTERNS.md`** - Java implementations with Spring Boot (32 patterns)
+- **`docs/NODE-PATTERNS.md`** - Node.js implementations with Express (32 patterns)
+- **`docs/PYTHON-PATTERNS.md`** - Python implementations with Flask (32 patterns)
+- **`docs/GO-PATTERNS.md`** - Go implementations with chi (32 patterns, one file per pattern)
 
 Each file includes:
 - Pattern theory and use cases
@@ -2039,14 +2041,14 @@ If you encounter issues not covered here:
 ### Documentation Files
 
 - **README.md** - Main repository documentation
-- **ADDING_A_MICROSERVICE.md** - Step-by-step guide for adding a new service (start here when extending)
-- **JAVA-PATTERNS.md** - Java pattern implementations
-- **NODE-PATTERNS.md** - Node.js pattern implementations
-- **PYTHON-PATTERNS.md** - Python pattern implementations
-- **GO-PATTERNS.md** - Go pattern implementations (one file per pattern)
-- **SECURITY-FIXES.md** - Security improvements log
-- **CRITICAL-FIXES-COMPLETE.md** - Critical fixes completion report
-- **PATTERN-REVIEW-COMPLETE.md** - Pattern implementation review (canonical 32-pattern list)
+- **docs/ADDING_A_MICROSERVICE.md** - Step-by-step guide for adding a new service (start here when extending)
+- **docs/JAVA-PATTERNS.md** - Java pattern implementations
+- **docs/NODE-PATTERNS.md** - Node.js pattern implementations
+- **docs/PYTHON-PATTERNS.md** - Python pattern implementations
+- **docs/GO-PATTERNS.md** - Go pattern implementations (one file per pattern)
+- **docs/SECURITY-FIXES.md** - Security improvements log
+- **docs/CRITICAL-FIXES-COMPLETE.md** - Critical fixes completion report
+- **docs/PATTERN-REVIEW-COMPLETE.md** - Pattern implementation review (canonical 32-pattern list)
 - **infra/README.md** - Which infrastructure stack is maintained, deprecated, or planned
 - **docs/DEPLOYMENT.md** - Full AWS EKS deployment walkthrough (prerequisites → create stack → CI deploy → verify → destroy)
 - **docs/PRICING.md** - What the running cluster costs per month, line by line, and how to cut it
@@ -2081,7 +2083,7 @@ If you encounter issues not covered here:
 ### Key Takeaways
 
 1. **Polyglot Architecture**: Work with Java, Node.js, Python, and Go services that implement the same patterns
-2. **Pattern-Driven**: 32 canonical microservices patterns organized in 10 categories (PATTERN-REVIEW-COMPLETE.md is authoritative)
+2. **Pattern-Driven**: 32 canonical microservices patterns organized in 10 categories (docs/PATTERN-REVIEW-COMPLETE.md is authoritative)
 3. **Environment-Based Config**: ALWAYS use environment variables, never hardcode
 4. **Comprehensive Documentation**: Reference `*-PATTERNS.md` files for detailed pattern information
 5. **Multiple Deployment Options**: Docker Compose, local dev, AWS EKS (maintained — primary), AWS Lambda (maintained); the ECS stack is deprecated

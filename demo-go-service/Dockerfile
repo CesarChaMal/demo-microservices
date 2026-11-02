@@ -1,4 +1,4 @@
-# demo-go-service — build per ADDING_A_MICROSERVICE.md Step 3 (multi-stage:
+# demo-go-service — build per docs/ADDING_A_MICROSERVICE.md Step 3 (multi-stage:
 # golang builder, distroless runtime).
 
 FROM golang:1.22-alpine AS builder

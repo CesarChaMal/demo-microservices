@@ -3,7 +3,7 @@
 # pattern-gap-analysis.sh — verify every full service implements the canonical
 # 32 microservices patterns.
 #
-# Source of truth: the four pattern catalogs (JAVA/NODE/PYTHON/GO-PATTERNS.md),
+# Source of truth: the four pattern catalogs in docs/ (JAVA/NODE/PYTHON/GO-PATTERNS.md),
 # each of which must contain exactly 32 `## N. Name Pattern` headings, identical
 # across languages. For each language we then check that a pattern
 # implementation file exists under its patterns/ directory.
@@ -41,7 +41,7 @@ parse_catalog() { # parse_catalog <file> — emit canonical pattern names
 # 1. Catalogs: each must have 32 headings; names must agree across languages.
 # --------------------------------------------------------------------------
 declare -A CANON=()   # normalized key -> canonical display name
-for catalog in JAVA-PATTERNS.md NODE-PATTERNS.md PYTHON-PATTERNS.md GO-PATTERNS.md; do
+for catalog in docs/JAVA-PATTERNS.md docs/NODE-PATTERNS.md docs/PYTHON-PATTERNS.md docs/GO-PATTERNS.md; do
     if [[ ! -f "$catalog" ]]; then
         echo "FAIL  missing catalog: $catalog"
         FAILED=1

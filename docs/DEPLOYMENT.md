@@ -329,4 +329,4 @@ internally) is the one-command path.
 - [docs/PRICING.md](PRICING.md) — what it costs, per scenario
 - [`infra/README.md`](../infra/README.md) — stack internals, status table, OIDC identity teardown
 - [`infra/eks/README.md`](../infra/eks/README.md) — EKS stack details
-- [ADDING_A_MICROSERVICE.md](../ADDING_A_MICROSERVICE.md) — adding an 8th service
+- [ADDING_A_MICROSERVICE.md](ADDING_A_MICROSERVICE.md) — adding an 8th service

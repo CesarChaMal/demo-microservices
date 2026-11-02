@@ -1,5 +1,5 @@
 // Package eureka implements the plain-REST Eureka client described in
-// ADDING_A_MICROSERVICE.md Step 4b (languages without a maintained client
+// docs/ADDING_A_MICROSERVICE.md Step 4b (languages without a maintained client
 // library talk to Eureka with raw HTTP: register, heartbeat, deregister, query).
 package eureka
 

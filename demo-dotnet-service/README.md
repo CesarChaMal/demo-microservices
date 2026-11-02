@@ -8,7 +8,7 @@ maintained client (*Step 4b*). It owns port **5003** and is wired into
 docker-compose, the gateway route table, and the Java service's Feign clients.
 
 The 32-pattern catalog is not implemented here yet — this is the contract-first
-member; see `ADDING_A_MICROSERVICE.md` for the family rules.
+member; see `docs/ADDING_A_MICROSERVICE.md` for the family rules.
 
 ## Features
 
@@ -101,7 +101,7 @@ EUREKA_SERVER_URL=http://localhost:8761/eureka/ ASPNETCORE_URLS=http://+:5003 do
 
 ## Eureka Registration
 
-Registration follows ADDING_A_MICROSERVICE.md **Step 4a** (real client): Steeltoe's
+Registration follows docs/ADDING_A_MICROSERVICE.md **Step 4a** (real client): Steeltoe's
 `AddEurekaDiscoveryClient()` starts registration and heartbeats as a hosted
 service and deregisters on shutdown.
 
