@@ -66,6 +66,6 @@ Deployments — the pattern is already established in `config.yaml`.
 
 ## Adding a new service (guide cross-reference)
 
-`ADDING_A_MICROSERVICE.md` Step 9 (optional AWS) covers this: copy the
+`docs/ADDING_A_MICROSERVICE.md` Step 9 (optional AWS) covers this: copy the
 `dotnet-service.yaml` shape, add the ECR repo to `local.service_repos` in
 `infra/eks/main.tf`, and add the image build to the deploy workflow matrix.

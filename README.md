@@ -9,7 +9,7 @@ This project demonstrates a complete microservices ecosystem with:
 - **Service Discovery**: Netflix Eureka Server
 - **API Gateway**: Spring Cloud Gateway — single entry point routing to every service via Eureka (`lb://`)
 - **Multiple Technology Stacks**: Java (Spring Boot), Node.js (Express), Python (Flask), Go (chi), C# (ASP.NET Core)
-- **Pattern Catalog**: 32 canonical microservices patterns implemented per language (`JAVA-PATTERNS.md`, `NODE-PATTERNS.md`, `PYTHON-PATTERNS.md`, `GO-PATTERNS.md`)
+- **Pattern Catalog**: 32 canonical microservices patterns implemented per language (`docs/JAVA-PATTERNS.md`, `docs/NODE-PATTERNS.md`, `docs/PYTHON-PATTERNS.md`, `docs/GO-PATTERNS.md`)
 - **Database**: MySQL with connection pooling; Redis for the caching patterns
 - **API Documentation**: Swagger/OpenAPI integration
 - **Containerization**: Docker & Docker Compose
@@ -33,7 +33,7 @@ This project demonstrates a complete microservices ecosystem with:
 
 ### Simplified Services
 
-Each full service has a `demo-simple-*` counterpart (`demo-simple-java-service`, `demo-simple-node-service`, `demo-simple-python-service`, `demo-simple-go-service`) — a minimal same-contract variant (`GET /info`, `POST /process`) for comparing the skeleton across languages. They are not wired into docker-compose; see `ADDING_A_MICROSERVICE.md` for the family rules.
+Each full service has a `demo-simple-*` counterpart (`demo-simple-java-service`, `demo-simple-node-service`, `demo-simple-python-service`, `demo-simple-go-service`) — a minimal same-contract variant (`GET /info`, `POST /process`) for comparing the skeleton across languages. They are not wired into docker-compose; see `docs/ADDING_A_MICROSERVICE.md` for the family rules.
 
 .NET enters at the **contract-first** tier: `demo-dotnet-service` implements the contract (`/info`, `/health`, `POST /process`) plus Eureka registration through a real client (Steeltoe — guide Step 4a), but no pattern catalog yet. It is the seed shape a new language starts from before growing to the full family.
 

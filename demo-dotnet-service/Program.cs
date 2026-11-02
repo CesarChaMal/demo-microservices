@@ -6,7 +6,7 @@
 // Eureka registration goes through the real Steeltoe client (guide Step 4a) — the
 // deliberate contrast with demo-go-service, which speaks the Eureka REST API itself
 // because Go has no maintained client (guide Step 4b). The 32-pattern catalog is not
-// implemented here (yet); see ADDING_A_MICROSERVICE.md for the family rules.
+// implemented here (yet); see docs/ADDING_A_MICROSERVICE.md for the family rules.
 
 using Steeltoe.Discovery.Eureka;
 

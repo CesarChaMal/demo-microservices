@@ -28,7 +28,7 @@ endpoints and health are the standard Spring Actuator set.
 ## Run
 
 Part of `docker compose up` (port **8081**, reserved in
-`ADDING_A_MICROSERVICE.md` §0). Depends on `eureka-server` being healthy.
+`docs/ADDING_A_MICROSERVICE.md` §0). Depends on `eureka-server` being healthy.
 
 ```bash
 # from the repo root
@@ -54,4 +54,4 @@ Bare-local: `./mvnw spring-boot:run` — the Eureka default then points at
 One route block in `src/main/resources/application.yml` — `id`, `uri:
 lb://<APPID-UPPERCASE>`, `Path=/<prefix>/**`, `StripPrefix=1`. No peer wiring
 changes anywhere else; the gateway is an entry point, not a peer
-(`ADDING_A_MICROSERVICE.md` Step 7 does not apply to it).
+(`docs/ADDING_A_MICROSERVICE.md` Step 7 does not apply to it).

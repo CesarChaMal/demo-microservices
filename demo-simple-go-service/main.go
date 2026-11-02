@@ -10,7 +10,7 @@
 // {"status":"UP"} — the simple Node/Python services omit it; Go keeps it as
 // a liveness probe target.
 //
-// Eureka registration uses plain REST calls (ADDING_A_MICROSERVICE.md Step 4b —
+// Eureka registration uses plain REST calls (docs/ADDING_A_MICROSERVICE.md Step 4b —
 // Go has no maintained Eureka client): register on startup, heartbeat every
 // 30 s, deregister on shutdown. The service registers as GO-SERVICE, the same
 // identity the full demo-go-service uses (the simple family convention — the
