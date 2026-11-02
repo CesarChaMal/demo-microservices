@@ -2151,3 +2151,10 @@ curl http://localhost:5003/health           # .NET
 **This guide is maintained to help AI assistants work effectively with this codebase. Always refer to this document when working on the demo-microservices repository.**
 
 *Last updated: 2026-11-01*
+
+## Status check
+
+`./status.sh` — read-only report of this repo's deployed cloud resources per
+environment/stack (AWS and non-AWS counts, DEPLOYED / NOT DEPLOYED verdicts).
+Use it to see at a glance whether resources already exist. Optional substring
+filters: `./status.sh <keyword>`.
